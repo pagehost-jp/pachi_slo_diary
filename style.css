@@ -1290,6 +1290,50 @@ body {
   color: #f66;
 }
 
+/* 設定推測 - 機種名未入力 */
+.estimation-pending {
+  text-align: center;
+  padding: 20px;
+}
+
+.pending-icon {
+  font-size: 1.5rem;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.pending-text {
+  color: var(--text-sub);
+  font-size: 0.9rem;
+}
+
+/* 設定推測 - 非対応機種 */
+.estimation-unsupported {
+  text-align: center;
+  padding: 20px;
+}
+
+.unsupported-icon {
+  font-size: 1.5rem;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.unsupported-text {
+  color: var(--loss);
+  font-size: 0.9rem;
+  display: block;
+  margin-bottom: 12px;
+}
+
+.supported-list {
+  font-size: 0.75rem;
+  color: var(--text-sub);
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+}
+
 .ocr-success {
   color: var(--profit);
   text-align: center;

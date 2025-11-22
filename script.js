@@ -968,32 +968,116 @@ function displayOcrResult(data) {
 }
 
 // ========== 設定推測機能 ==========
-// ディスクアップ2 メーカー発表値（サミー公式）
-const DISCUP2_SETTINGS = {
-  // ボーナス確率
-  bb: { 1: 287.4, 2: 282.5, 3: 278.9, 4: 266.4, 5: 258.0, 6: 245.1 },
-  rb: { 1: 385.5, 2: 385.5, 3: 376.6, 4: 360.1, 5: 341.3, 6: 322.8 },
-  combined: { 1: 164.5, 2: 163.0, 3: 160.1, 4: 153.2, 5: 146.9, 6: 139.4 },
+// 機種別メーカー発表値データベース
+const MACHINE_SETTINGS = {
+  // ディスクアップ2（サミー公式）
+  'ディスクアップ2': {
+    name: 'ディスクアップ2',
+    maker: 'サミー',
+    bb: { 1: 287.4, 2: 282.5, 3: 278.9, 4: 266.4, 5: 258.0, 6: 245.1 },
+    rb: { 1: 385.5, 2: 385.5, 3: 376.6, 4: 360.1, 5: 341.3, 6: 322.8 },
+    combined: { 1: 164.5, 2: 163.0, 3: 160.1, 4: 153.2, 5: 146.9, 6: 139.4 },
+    suika: { 1: 56.0, 2: 55.7, 3: 55.7, 4: 55.7, 5: 55.7, 6: 51.9 },
+    cherry: { 1: 37.9, 2: 37.4, 3: 37.0, 4: 36.6, 5: 36.1, 6: 35.6 },
+    common10: { 1: 64.0, 2: 62.7, 3: 59.6, 4: 57.1, 5: 54.2, 6: 50.5 },
+    weight: { bb: 1.0, rb: 1.2, combined: 1.5, suika: 2.0, cherry: 1.5, common10: 3.0 },
+    tips: '共通10枚が最重要。スイカ1/52以下で設定6濃厚'
+  },
 
-  // 小役確率（メーカー発表値）
-  suika: { 1: 56.0, 2: 55.7, 3: 55.7, 4: 55.7, 5: 55.7, 6: 51.9 },
-  cherry: { 1: 37.9, 2: 37.4, 3: 37.0, 4: 36.6, 5: 36.1, 6: 35.6 },
-
-  // AT中共通10枚（設定差大・最重要）
-  common10: { 1: 64.0, 2: 62.7, 3: 59.6, 4: 57.1, 5: 54.2, 6: 50.5 },
-
-  // 各項目の設定判別重要度（プロ視点）
-  weight: {
-    bb: 1.0,        // BB確率：参考程度（荒れやすい）
-    rb: 1.2,        // RB確率：設定差あり
-    combined: 1.5,  // 合算：重要
-    suika: 2.0,     // スイカ：設定6判別に超重要
-    cherry: 1.5,    // チェリー：設定差あり
-    common10: 3.0   // 共通10枚：最重要（設定差最大）
+  // ウルトラリミックス（ビスティ）
+  'ウルトラリミックス': {
+    name: 'ウルトラリミックス',
+    maker: 'ビスティ',
+    bb: { 1: 319.7, 2: 312.1, 3: 297.9, 4: 284.9, 5: 268.6, 6: 252.1 },
+    rb: { 1: 481.9, 2: 468.1, 3: 436.9, 4: 409.6, 5: 377.0, 6: 348.6 },
+    combined: { 1: 192.2, 2: 187.2, 3: 177.0, 4: 168.0, 5: 156.8, 6: 146.3 },
+    suika: { 1: 78.8, 2: 77.4, 3: 74.9, 4: 72.5, 5: 69.5, 6: 66.4 },
+    cherry: { 1: 156.0, 2: 152.0, 3: 145.6, 4: 139.8, 5: 132.1, 6: 124.2 },
+    weight: { bb: 1.5, rb: 1.5, combined: 2.0, suika: 2.5, cherry: 1.5 },
+    tips: 'スイカ確率に大きな設定差。合算も重要'
   }
 };
 
+// 機種名のエイリアス（表記ゆれ対応）
+const MACHINE_ALIASES = {
+  'ディスクアップ': 'ディスクアップ2',
+  'ディスクアップII': 'ディスクアップ2',
+  'DISC UP 2': 'ディスクアップ2',
+  'DISC UP2': 'ディスクアップ2',
+  'discup2': 'ディスクアップ2',
+  'ウルトラリミックス': 'ウルトラリミックス',
+  'ULTRA REMIX': 'ウルトラリミックス',
+  'ultraremix': 'ウルトラリミックス',
+};
+
+// 機種名から設定データを取得
+function getMachineSettings(machineName) {
+  if (!machineName) return null;
+
+  // 完全一致
+  if (MACHINE_SETTINGS[machineName]) {
+    return MACHINE_SETTINGS[machineName];
+  }
+
+  // エイリアスチェック
+  const normalized = machineName.toLowerCase().replace(/\s+/g, '');
+  for (const [alias, canonical] of Object.entries(MACHINE_ALIASES)) {
+    if (normalized.includes(alias.toLowerCase().replace(/\s+/g, ''))) {
+      return MACHINE_SETTINGS[canonical];
+    }
+  }
+
+  // 部分一致
+  for (const [name, settings] of Object.entries(MACHINE_SETTINGS)) {
+    if (machineName.includes(name) || name.includes(machineName)) {
+      return settings;
+    }
+  }
+
+  return null;
+}
+
 function displaySettingEstimation(data) {
+  const dataGrid = document.getElementById('ocr-data-grid');
+
+  // 既存の設定推測を削除
+  const existingEstimation = dataGrid.querySelector('.setting-estimation');
+  if (existingEstimation) existingEstimation.remove();
+
+  // 機種名を取得
+  const machineName = document.getElementById('machine-name').value.trim();
+
+  // 機種名が未入力の場合
+  if (!machineName) {
+    const html = `<div class="setting-estimation">
+      <div class="estimation-header">📊 設定推測</div>
+      <div class="estimation-pending">
+        <span class="pending-icon">⚠️</span>
+        <span class="pending-text">機種名を入力すると設定推測が表示されます</span>
+      </div>
+    </div>`;
+    dataGrid.insertAdjacentHTML('beforeend', html);
+    return;
+  }
+
+  // 機種データを取得
+  const machineData = getMachineSettings(machineName);
+
+  // 非対応機種の場合
+  if (!machineData) {
+    const supportedList = Object.keys(MACHINE_SETTINGS).join('、');
+    const html = `<div class="setting-estimation">
+      <div class="estimation-header">📊 設定推測</div>
+      <div class="estimation-unsupported">
+        <span class="unsupported-icon">❌</span>
+        <span class="unsupported-text">「${machineName}」は設定推測未対応です</span>
+        <div class="supported-list">対応機種: ${supportedList}</div>
+      </div>
+    </div>`;
+    dataGrid.insertAdjacentHTML('beforeend', html);
+    return;
+  }
+
   const results = [];
   let settingPoints = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
   let totalWeight = 0;
@@ -1005,10 +1089,10 @@ function displaySettingEstimation(data) {
   }
 
   // BB確率から推測
-  if (data.bb_probability) {
+  if (data.bb_probability && machineData.bb) {
     const prob = parseProbability(data.bb_probability);
     if (prob) {
-      const analysis = analyzeByThreshold(prob, DISCUP2_SETTINGS.bb, DISCUP2_SETTINGS.weight.bb);
+      const analysis = analyzeByThreshold(prob, machineData.bb, machineData.weight.bb);
       results.push({
         label: 'BB確率',
         value: data.bb_probability,
@@ -1016,15 +1100,15 @@ function displaySettingEstimation(data) {
         note: analysis.note
       });
       addWeightedScores(settingPoints, analysis.scores);
-      totalWeight += DISCUP2_SETTINGS.weight.bb;
+      totalWeight += machineData.weight.bb;
     }
   }
 
   // RB確率から推測
-  if (data.rb_probability) {
+  if (data.rb_probability && machineData.rb) {
     const prob = parseProbability(data.rb_probability);
     if (prob) {
-      const analysis = analyzeByThreshold(prob, DISCUP2_SETTINGS.rb, DISCUP2_SETTINGS.weight.rb);
+      const analysis = analyzeByThreshold(prob, machineData.rb, machineData.weight.rb);
       results.push({
         label: 'RB確率',
         value: data.rb_probability,
@@ -1032,15 +1116,15 @@ function displaySettingEstimation(data) {
         note: analysis.note
       });
       addWeightedScores(settingPoints, analysis.scores);
-      totalWeight += DISCUP2_SETTINGS.weight.rb;
+      totalWeight += machineData.weight.rb;
     }
   }
 
-  // スイカ確率から推測（設定6判別で超重要）
-  if (data.suika_probability) {
+  // スイカ確率から推測
+  if (data.suika_probability && machineData.suika) {
     const prob = parseProbability(data.suika_probability);
     if (prob) {
-      const analysis = analyzeSuika(prob);
+      const analysis = analyzeByThresholdWithTips(prob, machineData.suika, machineData.weight.suika, machineData.name);
       results.push({
         label: 'スイカ確率',
         value: data.suika_probability,
@@ -1049,15 +1133,15 @@ function displaySettingEstimation(data) {
         important: true
       });
       addWeightedScores(settingPoints, analysis.scores);
-      totalWeight += DISCUP2_SETTINGS.weight.suika;
+      totalWeight += machineData.weight.suika;
     }
   }
 
   // チェリー確率から推測
-  if (data.cherry_probability) {
+  if (data.cherry_probability && machineData.cherry) {
     const prob = parseProbability(data.cherry_probability);
     if (prob) {
-      const analysis = analyzeByThreshold(prob, DISCUP2_SETTINGS.cherry, DISCUP2_SETTINGS.weight.cherry);
+      const analysis = analyzeByThreshold(prob, machineData.cherry, machineData.weight.cherry);
       results.push({
         label: 'チェリー確率',
         value: data.cherry_probability,
@@ -1065,15 +1149,15 @@ function displaySettingEstimation(data) {
         note: analysis.note
       });
       addWeightedScores(settingPoints, analysis.scores);
-      totalWeight += DISCUP2_SETTINGS.weight.cherry;
+      totalWeight += machineData.weight.cherry;
     }
   }
 
-  // 共通10枚から推測（最重要指標）
-  if (data.common_10mai_probability) {
+  // 共通10枚から推測（ディスクアップ2専用）
+  if (data.common_10mai_probability && machineData.common10) {
     const prob = parseProbability(data.common_10mai_probability);
     if (prob) {
-      const analysis = analyzeCommon10(prob);
+      const analysis = analyzeCommon10(prob, machineData.common10, machineData.weight.common10);
       results.push({
         label: '共通10枚',
         value: data.common_10mai_probability,
@@ -1082,7 +1166,7 @@ function displaySettingEstimation(data) {
         critical: true
       });
       addWeightedScores(settingPoints, analysis.scores);
-      totalWeight += DISCUP2_SETTINGS.weight.common10;
+      totalWeight += machineData.weight.common10;
     }
   }
 
@@ -1100,8 +1184,8 @@ function displaySettingEstimation(data) {
 
   // HTML生成
   let html = '<div class="setting-estimation">';
-  html += '<div class="estimation-header">📊 設定推測【ディスクアップ2】</div>';
-  html += '<div class="estimation-note">※メーカー発表値に基づく判定</div>';
+  html += `<div class="estimation-header">📊 設定推測【${machineData.name}】</div>`;
+  html += `<div class="estimation-note">※${machineData.maker}発表値に基づく判定</div>`;
 
   results.forEach(r => {
     let rowClass = 'estimation-row';
@@ -1181,37 +1265,35 @@ function analyzeByThreshold(value, thresholds, weight) {
   };
 }
 
-// スイカ確率専用分析（設定6判別で重要）
-function analyzeSuika(value) {
+// 閾値分析（コメント付き・汎用）
+function analyzeByThresholdWithTips(value, thresholds, weight, machineName) {
   const scores = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
-  const thresholds = DISCUP2_SETTINGS.suika;
-  const weight = DISCUP2_SETTINGS.weight.suika;
   let note = '';
 
-  // スイカは設定1と設定6に差がある（設定2-5は同じ）
-  // 1/51.9以下なら設定6濃厚
-  if (value <= 52.5) {
-    scores[6] = weight * 15;
-    note = '🔥 設定6の可能性大！';
-  } else if (value <= 54.0) {
-    scores[6] = weight * 10;
-    scores[5] = weight * 5;
-    note = '設定6寄りの数値';
-  } else if (value <= 56.0) {
-    // 設定2-5の範囲
-    for (let s = 2; s <= 5; s++) scores[s] = weight * 8;
-    scores[6] = weight * 5;
-    scores[1] = weight * 6;
-  } else {
-    // 設定1の可能性
-    scores[1] = weight * 10;
-    for (let s = 2; s <= 5; s++) scores[s] = weight * 5;
-    note = '低設定の可能性あり';
+  // 設定6の理論値との比較
+  const setting6Threshold = thresholds[6];
+  const setting1Threshold = thresholds[1];
+
+  // 各設定との距離を計算（値が小さいほど高設定）
+  for (let s = 1; s <= 6; s++) {
+    const diff = value - thresholds[s];
+    if (diff <= 0) {
+      scores[s] = (1 + Math.abs(diff) / thresholds[s] * 2) * weight * 10;
+    } else {
+      scores[s] = Math.max(0, (1 - diff / thresholds[s]) * weight * 10);
+    }
+  }
+
+  // コメント生成
+  if (value <= setting6Threshold * 1.02) {
+    note = '🔥 高設定示唆！';
+  } else if (value >= setting1Threshold * 0.98) {
+    note = '低設定寄りの数値';
   }
 
   const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
   const topScore = sorted[0][1];
-  const likelySettings = sorted.filter(s => s[1] >= topScore * 0.7).map(s => s[0]);
+  const likelySettings = sorted.filter(s => s[1] >= topScore * 0.8).map(s => s[0]);
 
   return {
     scores,
@@ -1220,27 +1302,30 @@ function analyzeSuika(value) {
   };
 }
 
-// 共通10枚専用分析（最重要指標）
-function analyzeCommon10(value) {
+// 共通10枚分析（汎用・閾値渡し）
+function analyzeCommon10(value, thresholds, weight) {
   const scores = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
-  const thresholds = DISCUP2_SETTINGS.common10;
-  const weight = DISCUP2_SETTINGS.weight.common10;
   let note = '';
 
-  // 共通10枚は設定差が大きい（1/64.0 〜 1/50.5）
-  if (value <= 51.0) {
+  const s6 = thresholds[6];
+  const s5 = thresholds[5];
+  const s3 = thresholds[3];
+  const s1 = thresholds[1];
+
+  // 共通10枚は設定差が大きい
+  if (value <= s6 * 1.01) {
     scores[6] = weight * 15;
-    note = '🔥 設定6濃厚！（理論値1/50.5）';
-  } else if (value <= 54.5) {
+    note = `🔥 設定6濃厚！（理論値1/${s6}）`;
+  } else if (value <= s5 * 1.02) {
     scores[6] = weight * 10;
     scores[5] = weight * 12;
     note = '高設定の挙動';
-  } else if (value <= 58.0) {
+  } else if (value <= s3 * 1.02) {
     scores[5] = weight * 8;
     scores[4] = weight * 10;
     scores[3] = weight * 6;
     note = '中間設定の挙動';
-  } else if (value <= 63.0) {
+  } else if (value <= s1 * 0.98) {
     scores[3] = weight * 8;
     scores[2] = weight * 10;
     scores[1] = weight * 6;
@@ -1892,13 +1977,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateBalance();
   });
 
-  // 機種名入力時の統計表示
+  // 機種名入力時の統計表示 & 設定推測更新
   const machineInput = document.getElementById('machine-name');
   const clearBtn = document.getElementById('btn-clear-machine');
 
   machineInput.addEventListener('input', () => {
     showMachineStats(machineInput.value);
     clearBtn.style.display = machineInput.value ? 'flex' : 'none';
+    // OCRデータがあれば設定推測を再計算
+    if (currentOcrData) {
+      displaySettingEstimation(currentOcrData);
+    }
+  });
+  machineInput.addEventListener('change', () => {
+    // 選択確定時も再計算
+    if (currentOcrData) {
+      displaySettingEstimation(currentOcrData);
+    }
   });
   machineInput.addEventListener('focus', updateMachineDatalist);
 
