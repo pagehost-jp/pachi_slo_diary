@@ -869,21 +869,28 @@ async function performOcr() {
     }
 
     const prompt = `この画像はパチスロの実戦データ（Qマイスロなど）のスクリーンショットです。
-ディスクアップ2またはウルトラリミックスのデータを読み取ってください。
+ディスクアップ2 または ディスクアップウルトラリミックス（ディスク3）のデータを読み取ってください。
 
 【重要】複数枚の画像がある場合、同じデータが重複している可能性があります。
 重複している場合は無視して、ユニークなデータのみを読み取ってください。
 
-読み取るデータ（この9項目）:
+読み取るデータ:
+【共通項目】
 - game_count: ゲーム数（数値のみ）
 - bb_probability: 総BB確率（例: "1/181.58"）
 - rb_probability: RB確率（例: "1/317.75"）
-- skill_true_rate: NORMAL-BB中真・技術介入成功率（例: "100.0%"）
-- skill_extreme_rate: NORMAL-BB中極・技術介入成功率（例: "33.4%"）
+- skill_true_rate: 真・技術介入成功率（例: "100.0%"）
+- skill_extreme_rate: 極・技術介入成功率（例: "33.4%"）
 - dance_time_count: DANCE TIME突入回数（数値のみ）
+
+【ディスクアップ2用】
 - suika_probability: スイカ確率（例: "1/52.96"）
 - cherry_probability: チェリー確率（例: "1/36.32"）
 - common_10mai_probability: AT中共通10枚確率（例: "1/55.91"）
+
+【ウルトラリミックス用】
+- suikaA_probability: スイカA確率（例: "1/57.03"）※スイカAのみの確率
+- sanmai_probability: 3枚役確率（例: "1/13.12"）※ボーナス/☆/☆の確率
 
 JSONのみを返してください。読み取れない項目はnullにしてください。`;
 
@@ -922,7 +929,7 @@ function displayOcrResult(data) {
   const resultDiv = document.getElementById('ocr-result');
   const dataGrid = document.getElementById('ocr-data-grid');
 
-  // プロ目線で重要な9項目
+  // 読み取り可能な全項目
   const labels = {
     game_count: 'ゲーム数',
     bb_probability: 'BB確率',
@@ -930,10 +937,20 @@ function displayOcrResult(data) {
     skill_true_rate: '真ビタ成功率',
     skill_extreme_rate: '極ビタ成功率',
     dance_time_count: 'DT突入',
+    // ディスクアップ2用
     suika_probability: 'スイカ確率',
     cherry_probability: 'チェリー確率',
-    common_10mai_probability: '共通10枚'
+    common_10mai_probability: '共通10枚',
+    // ウルトラリミックス用
+    suikaA_probability: 'スイカA確率',
+    sanmai_probability: '3枚役確率'
   };
+
+  // 設定判別で重要な項目
+  const importantKeys = [
+    'suika_probability', 'cherry_probability', 'common_10mai_probability',
+    'suikaA_probability', 'sanmai_probability'
+  ];
 
   dataGrid.innerHTML = '';
 
@@ -943,8 +960,7 @@ function displayOcrResult(data) {
       const item = document.createElement('div');
       item.className = 'ocr-data-item';
       // 設定推測に重要な項目はハイライト
-      if (key === 'skill_true_rate' || key === 'skill_extreme_rate' ||
-          key === 'suika_probability' || key === 'cherry_probability' || key === 'common_10mai_probability') {
+      if (importantKeys.includes(key)) {
         item.classList.add('highlight');
       }
       item.innerHTML = `
@@ -984,30 +1000,37 @@ const MACHINE_SETTINGS = {
     tips: '共通10枚が最重要。スイカ1/52以下で設定6濃厚'
   },
 
-  // ウルトラリミックス（ビスティ）
-  'ウルトラリミックス': {
-    name: 'ウルトラリミックス',
-    maker: 'ビスティ',
-    bb: { 1: 319.7, 2: 312.1, 3: 297.9, 4: 284.9, 5: 268.6, 6: 252.1 },
-    rb: { 1: 481.9, 2: 468.1, 3: 436.9, 4: 409.6, 5: 377.0, 6: 348.6 },
-    combined: { 1: 192.2, 2: 187.2, 3: 177.0, 4: 168.0, 5: 156.8, 6: 146.3 },
-    suika: { 1: 78.8, 2: 77.4, 3: 74.9, 4: 72.5, 5: 69.5, 6: 66.4 },
-    cherry: { 1: 156.0, 2: 152.0, 3: 145.6, 4: 139.8, 5: 132.1, 6: 124.2 },
-    weight: { bb: 1.5, rb: 1.5, combined: 2.0, suika: 2.5, cherry: 1.5 },
-    tips: 'スイカ確率に大きな設定差。合算も重要'
+  // ディスクアップ ウルトラリミックス（サミー）※ディスク3
+  'ディスクアップウルトラリミックス': {
+    name: 'ディスクアップ ウルトラリミックス',
+    maker: 'サミー',
+    // 小役確率（メーカー発表値）
+    suikaA: { 1: 59.6, 2: 59.1, 5: 57.0, 6: 54.4 },  // スイカA
+    suika: { 1: 49.3, 2: 49.0, 5: 47.5, 6: 45.7 },   // スイカ合算
+    sanmai: { 1: 13.7, 2: 13.4, 5: 12.9, 6: 12.6 },  // 3枚役（ボーナス/☆/☆）
+    kakuteiCherry: { 1: 3276.8, 2: 2978.9, 5: 2340.6, 6: 1927.5 }, // 確定チェリー
+    weight: { suikaA: 2.5, suika: 2.0, sanmai: 3.0, kakuteiCherry: 1.5 },
+    tips: '3枚役が最重要。スイカA 1/54以下で設定6期待。設定3,4は存在しない'
   }
 };
 
 // 機種名のエイリアス（表記ゆれ対応）
 const MACHINE_ALIASES = {
-  'ディスクアップ': 'ディスクアップ2',
+  // ディスクアップ2
+  'ディスクアップ2': 'ディスクアップ2',
   'ディスクアップII': 'ディスクアップ2',
   'DISC UP 2': 'ディスクアップ2',
   'DISC UP2': 'ディスクアップ2',
   'discup2': 'ディスクアップ2',
-  'ウルトラリミックス': 'ウルトラリミックス',
-  'ULTRA REMIX': 'ウルトラリミックス',
-  'ultraremix': 'ウルトラリミックス',
+  // ディスクアップ ウルトラリミックス（ディスク3）
+  'ウルトラリミックス': 'ディスクアップウルトラリミックス',
+  'ULTRAREMIX': 'ディスクアップウルトラリミックス',
+  'ULTRA REMIX': 'ディスクアップウルトラリミックス',
+  'ディスク3': 'ディスクアップウルトラリミックス',
+  'ディスクアップ3': 'ディスクアップウルトラリミックス',
+  'ディスクアップウルトラリミックス': 'ディスクアップウルトラリミックス',
+  'ディスクアップ ウルトラリミックス': 'ディスクアップウルトラリミックス',
+  'A-SLOT': 'ディスクアップウルトラリミックス',
 };
 
 // 機種名から設定データを取得
@@ -1137,7 +1160,7 @@ function displaySettingEstimation(data) {
     }
   }
 
-  // チェリー確率から推測
+  // チェリー確率から推測（ディスクアップ2）
   if (data.cherry_probability && machineData.cherry) {
     const prob = parseProbability(data.cherry_probability);
     if (prob) {
@@ -1167,6 +1190,40 @@ function displaySettingEstimation(data) {
       });
       addWeightedScores(settingPoints, analysis.scores);
       totalWeight += machineData.weight.common10;
+    }
+  }
+
+  // スイカA確率から推測（ウルトラリミックス）
+  if (data.suikaA_probability && machineData.suikaA) {
+    const prob = parseProbability(data.suikaA_probability);
+    if (prob) {
+      const analysis = analyzeByThresholdFor1256(prob, machineData.suikaA, machineData.weight.suikaA);
+      results.push({
+        label: 'スイカA確率',
+        value: data.suikaA_probability,
+        likely: analysis.likelySettings,
+        note: analysis.note,
+        important: true
+      });
+      addWeightedScores(settingPoints, analysis.scores);
+      totalWeight += machineData.weight.suikaA;
+    }
+  }
+
+  // 3枚役確率から推測（ウルトラリミックス・最重要）
+  if (data.sanmai_probability && machineData.sanmai) {
+    const prob = parseProbability(data.sanmai_probability);
+    if (prob) {
+      const analysis = analyzeByThresholdFor1256(prob, machineData.sanmai, machineData.weight.sanmai);
+      results.push({
+        label: '3枚役確率',
+        value: data.sanmai_probability,
+        likely: analysis.likelySettings,
+        note: analysis.note,
+        critical: true
+      });
+      addWeightedScores(settingPoints, analysis.scores);
+      totalWeight += machineData.weight.sanmai;
     }
   }
 
@@ -1262,6 +1319,45 @@ function analyzeByThreshold(value, thresholds, weight) {
     scores,
     likelySettings: formatLikelySettings(likelySettings),
     note: ''
+  };
+}
+
+// 設定1,2,5,6のみの機種用分析（ウルトラリミックスなど）
+function analyzeByThresholdFor1256(value, thresholds, weight) {
+  const scores = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+  let note = '';
+
+  // 設定1,2,5,6のみ
+  const settings = [1, 2, 5, 6];
+
+  for (const s of settings) {
+    const diff = value - thresholds[s];
+    if (diff <= 0) {
+      scores[s] = (1 + Math.abs(diff) / thresholds[s] * 2) * weight * 10;
+    } else {
+      scores[s] = Math.max(0, (1 - diff / thresholds[s]) * weight * 10);
+    }
+  }
+
+  // コメント生成
+  const s6 = thresholds[6];
+  const s1 = thresholds[1];
+  if (value <= s6 * 1.02) {
+    note = '🔥 高設定示唆！';
+  } else if (value >= s1 * 0.98) {
+    note = '低設定寄りの数値';
+  }
+
+  const sorted = Object.entries(scores)
+    .filter(([s]) => settings.includes(parseInt(s)))
+    .sort((a, b) => b[1] - a[1]);
+  const topScore = sorted[0][1];
+  const likelySettings = sorted.filter(s => s[1] >= topScore * 0.8).map(s => s[0]);
+
+  return {
+    scores,
+    likelySettings: formatLikelySettings(likelySettings),
+    note
   };
 }
 
