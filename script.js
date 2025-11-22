@@ -2,6 +2,236 @@
 // pachi_slo_diary - Main Script
 // ========================================
 
+// ========== Firebase設定 ==========
+const firebaseConfig = {
+  apiKey: "AIzaSyCBTih30LehJfHvuF9x8TLUsNKIPBAqhAE",
+  authDomain: "pachi-slo-diary.firebaseapp.com",
+  projectId: "pachi-slo-diary",
+  storageBucket: "pachi-slo-diary.firebasestorage.app",
+  messagingSenderId: "1040619476876",
+  appId: "1:1040619476876:web:be1a167e4fe777f92d28a9"
+};
+
+// Firebase初期化
+let firebaseApp = null;
+let auth = null;
+let firestoreDb = null;
+let currentUser = null;
+
+function initFirebase() {
+  if (firebaseConfig.apiKey === "YOUR_API_KEY") {
+    console.log('Firebase未設定 - クラウド同期は無効');
+    return false;
+  }
+  try {
+    firebaseApp = firebase.initializeApp(firebaseConfig);
+    auth = firebase.auth();
+    firestoreDb = firebase.firestore();
+
+    // 認証状態の監視
+    auth.onAuthStateChanged(handleAuthStateChanged);
+    return true;
+  } catch (error) {
+    console.error('Firebase初期化エラー:', error);
+    return false;
+  }
+}
+
+// 認証状態変更ハンドラ
+async function handleAuthStateChanged(user) {
+  currentUser = user;
+  updateUserUI();
+
+  if (user) {
+    // ログイン時：クラウドからデータを同期
+    await syncFromCloud();
+  }
+}
+
+// UI更新
+function updateUserUI() {
+  const userBtn = document.getElementById('btn-user');
+  const userName = document.getElementById('user-name');
+  const loginBtn = document.getElementById('btn-google-login');
+  const logoutBtn = document.getElementById('btn-logout');
+  const syncText = document.getElementById('sync-text');
+  const syncIcon = document.querySelector('.sync-icon');
+
+  if (currentUser) {
+    userBtn.classList.add('logged-in');
+    userName.textContent = currentUser.displayName?.split(' ')[0] || 'ユーザー';
+    document.querySelector('.user-icon').textContent = '✓';
+    if (loginBtn) loginBtn.style.display = 'none';
+    if (logoutBtn) logoutBtn.style.display = 'block';
+    if (syncText) {
+      syncText.textContent = '同期済み';
+      syncText.classList.add('synced');
+    }
+    if (syncIcon) syncIcon.textContent = '✅';
+  } else {
+    userBtn.classList.remove('logged-in');
+    userName.textContent = 'ログイン';
+    document.querySelector('.user-icon').textContent = '👤';
+    if (loginBtn) loginBtn.style.display = 'block';
+    if (logoutBtn) logoutBtn.style.display = 'none';
+    if (syncText) {
+      syncText.textContent = '未ログイン';
+      syncText.classList.remove('synced');
+    }
+    if (syncIcon) syncIcon.textContent = '☁️';
+  }
+}
+
+// Googleログイン
+async function loginWithGoogle() {
+  if (!auth) {
+    alert('Firebase未設定です。設定を確認してください。');
+    return;
+  }
+  try {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    await auth.signInWithPopup(provider);
+  } catch (error) {
+    console.error('ログインエラー:', error);
+    if (error.code === 'auth/popup-closed-by-user') {
+      // ユーザーがポップアップを閉じた - 何もしない
+    } else {
+      alert('ログインに失敗しました: ' + error.message);
+    }
+  }
+}
+
+// ログアウト
+async function logout() {
+  if (!auth) return;
+  try {
+    await auth.signOut();
+  } catch (error) {
+    console.error('ログアウトエラー:', error);
+  }
+}
+
+// クラウドからデータを同期
+async function syncFromCloud() {
+  if (!currentUser || !firestoreDb) return;
+
+  try {
+    const snapshot = await firestoreDb
+      .collection('users')
+      .doc(currentUser.uid)
+      .collection('entries')
+      .get();
+
+    if (snapshot.empty) {
+      // クラウドにデータがない場合、ローカルからアップロード
+      await syncToCloud();
+      return;
+    }
+
+    // クラウドのデータをローカルに保存
+    for (const doc of snapshot.docs) {
+      const cloudEntry = doc.data();
+      cloudEntry.cloudId = doc.id;
+
+      // ローカルに同じ日付のエントリーがあるかチェック
+      const localEntries = await getEntriesByMonth(cloudEntry.year, cloudEntry.month);
+      const existingEntry = localEntries.find(e => e.day === cloudEntry.day);
+
+      if (existingEntry) {
+        // 更新日時で比較して新しい方を採用
+        const cloudUpdated = cloudEntry.updatedAt?.toDate?.() || new Date(0);
+        const localUpdated = existingEntry.updatedAt ? new Date(existingEntry.updatedAt) : new Date(0);
+
+        if (cloudUpdated > localUpdated) {
+          cloudEntry.id = existingEntry.id;
+          await saveEntry(cloudEntry, false); // クラウド同期なしで保存
+        }
+      } else {
+        await saveEntry(cloudEntry, false);
+      }
+    }
+
+    console.log('クラウドからの同期完了');
+    // 画面を更新
+    loadMonthlyData();
+  } catch (error) {
+    console.error('クラウド同期エラー:', error);
+  }
+}
+
+// クラウドへデータを同期
+async function syncToCloud() {
+  if (!currentUser || !firestoreDb) return;
+
+  try {
+    const entries = await getAllEntries();
+    const batch = firestoreDb.batch();
+    const userEntriesRef = firestoreDb
+      .collection('users')
+      .doc(currentUser.uid)
+      .collection('entries');
+
+    for (const entry of entries) {
+      // 画像はサイズが大きいのでクラウドに保存しない
+      const cloudEntry = { ...entry };
+      delete cloudEntry.images;
+      delete cloudEntry.id;
+      cloudEntry.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+
+      // ドキュメントIDは日付ベースで一意に
+      const docId = `${entry.year}-${String(entry.month).padStart(2, '0')}-${String(entry.day).padStart(2, '0')}`;
+      const docRef = userEntriesRef.doc(docId);
+      batch.set(docRef, cloudEntry, { merge: true });
+    }
+
+    await batch.commit();
+    console.log('クラウドへの同期完了');
+  } catch (error) {
+    console.error('クラウドアップロードエラー:', error);
+  }
+}
+
+// 単一エントリーをクラウドに保存
+async function saveEntryToCloud(entry) {
+  if (!currentUser || !firestoreDb) return;
+
+  try {
+    const cloudEntry = { ...entry };
+    delete cloudEntry.images;
+    delete cloudEntry.id;
+    cloudEntry.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+
+    const docId = `${entry.year}-${String(entry.month).padStart(2, '0')}-${String(entry.day).padStart(2, '0')}`;
+
+    await firestoreDb
+      .collection('users')
+      .doc(currentUser.uid)
+      .collection('entries')
+      .doc(docId)
+      .set(cloudEntry, { merge: true });
+  } catch (error) {
+    console.error('クラウド保存エラー:', error);
+  }
+}
+
+// クラウドからエントリーを削除
+async function deleteEntryFromCloud(entry) {
+  if (!currentUser || !firestoreDb) return;
+
+  try {
+    const docId = `${entry.year}-${String(entry.month).padStart(2, '0')}-${String(entry.day).padStart(2, '0')}`;
+
+    await firestoreDb
+      .collection('users')
+      .doc(currentUser.uid)
+      .collection('entries')
+      .doc(docId)
+      .delete();
+  } catch (error) {
+    console.error('クラウド削除エラー:', error);
+  }
+}
+
 // APIキー管理
 let geminiApiKey = localStorage.getItem('gemini_api_key') || '';
 
@@ -42,16 +272,24 @@ async function initDB() {
 }
 
 // ========== データ操作 ==========
-async function saveEntry(entry) {
+async function saveEntry(entry, syncCloud = true) {
   return new Promise((resolve, reject) => {
     const transaction = db.transaction([STORE_NAME], 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
 
     // インデックス用
     entry.yearMonth = `${entry.year}-${String(entry.month).padStart(2, '0')}`;
+    entry.updatedAt = new Date().toISOString();
 
     const request = entry.id ? store.put(entry) : store.add(entry);
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = async () => {
+      // クラウド同期
+      if (syncCloud && currentUser) {
+        entry.id = request.result;
+        await saveEntryToCloud(entry);
+      }
+      resolve(request.result);
+    };
     request.onerror = () => reject(request.error);
   });
 }
@@ -66,12 +304,23 @@ async function getEntry(id) {
   });
 }
 
-async function deleteEntry(id) {
-  return new Promise((resolve, reject) => {
+async function deleteEntry(id, entry = null) {
+  return new Promise(async (resolve, reject) => {
+    // 削除前にエントリー情報を取得（クラウド削除用）
+    if (!entry && currentUser) {
+      entry = await getEntry(id);
+    }
+
     const transaction = db.transaction([STORE_NAME], 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
     const request = store.delete(id);
-    request.onsuccess = () => resolve();
+    request.onsuccess = async () => {
+      // クラウドからも削除
+      if (entry && currentUser) {
+        await deleteEntryFromCloud(entry);
+      }
+      resolve();
+    };
     request.onerror = () => reject(request.error);
   });
 }
@@ -134,6 +383,7 @@ function showEntryView(entryId = null) {
     const today = new Date();
     document.getElementById('entry-date').textContent =
       `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`;
+    document.getElementById('date-input').value = today.toISOString().slice(0, 10);
   }
 }
 
@@ -339,6 +589,7 @@ async function loadEntry(id) {
 
   document.getElementById('entry-date').textContent =
     `${entry.year}年${entry.month}月${entry.day}日`;
+  document.getElementById('date-input').value = `${entry.year}-${String(entry.month).padStart(2, '0')}-${String(entry.day).padStart(2, '0')}`;
   document.getElementById('hall-name').value = entry.hall || '';
   document.getElementById('btn-clear-hall').style.display = entry.hall ? 'flex' : 'none';
   document.getElementById('machine-name').value = entry.machine || '';
@@ -1192,6 +1443,9 @@ function selectMonth(month) {
 document.addEventListener('DOMContentLoaded', async () => {
   await initDB();
 
+  // Firebase初期化
+  initFirebase();
+
   // 起動時に今日のエントリーを直接開く
   await openTodaysEntry();
 
@@ -1234,6 +1488,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-back').addEventListener('click', showMonthlyView);
   document.getElementById('btn-save').addEventListener('click', saveCurrentEntry);
   document.getElementById('btn-delete').addEventListener('click', deleteCurrentEntry);
+
+  // 日付変更
+  const dateInput = document.getElementById('date-input');
+  dateInput.addEventListener('change', (e) => {
+    const date = new Date(e.target.value);
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    document.getElementById('entry-date').textContent = `${year}年${month}月${day}日`;
+  });
 
   // ドロップゾーン初期化
   initDropZones();
@@ -1300,7 +1564,29 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-close-settings').addEventListener('click', closeSettings);
   document.getElementById('btn-save-settings').addEventListener('click', saveSettings);
   document.getElementById('btn-toggle-key').addEventListener('click', toggleKeyVisibility);
-  document.getElementById('btn-test-key').addEventListener('click', testApiKey);
+
+  // Firebase認証
+  document.getElementById('btn-user').addEventListener('click', () => {
+    if (currentUser) {
+      openSettings();
+    } else {
+      loginWithGoogle();
+    }
+  });
+  document.getElementById('btn-google-login').addEventListener('click', loginWithGoogle);
+  document.getElementById('btn-logout').addEventListener('click', logout);
+
+  // バックアップ機能
+  document.getElementById('btn-export').addEventListener('click', exportData);
+  document.getElementById('btn-import').addEventListener('click', () => {
+    document.getElementById('import-file').click();
+  });
+  document.getElementById('import-file').addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+      importData(e.target.files[0]);
+      e.target.value = ''; // リセット
+    }
+  });
 
   // APIキーがあれば入力欄にセット、なければ設定画面を表示
   if (geminiApiKey) {
@@ -1382,6 +1668,54 @@ async function testApiKey() {
   } finally {
     btn.textContent = 'テスト';
     btn.disabled = false;
+  }
+}
+
+// ========== バックアップ機能 ==========
+async function exportData() {
+  const entries = await getAllEntries();
+  const data = {
+    version: 1,
+    exportDate: new Date().toISOString(),
+    entries: entries
+  };
+
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `pachi_slo_diary_backup_${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  alert(`${entries.length}件のデータをエクスポートしました`);
+}
+
+async function importData(file) {
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+
+    if (!data.entries || !Array.isArray(data.entries)) {
+      throw new Error('無効なバックアップファイルです');
+    }
+
+    const count = data.entries.length;
+    if (!confirm(`${count}件のデータをインポートします。\n既存のデータは上書きされる可能性があります。\n続行しますか？`)) {
+      return;
+    }
+
+    // データをインポート
+    for (const entry of data.entries) {
+      await saveEntry(entry);
+    }
+
+    alert(`${count}件のデータをインポートしました`);
+    showMonthlyView();
+  } catch (error) {
+    alert('インポートに失敗しました: ' + error.message);
   }
 }
 
