@@ -258,6 +258,7 @@ async function loadEntry(id) {
   document.getElementById('entry-date').textContent =
     `${entry.year}年${entry.month}月${entry.day}日`;
   document.getElementById('machine-name').value = entry.machine || '';
+  document.getElementById('btn-clear-machine').style.display = entry.machine ? 'flex' : 'none';
   document.getElementById('input-in').value = entry.in || '';
   document.getElementById('input-out').value = entry.out || '';
   // 稼働時間（時間と分に分解）
@@ -296,6 +297,7 @@ async function loadEntry(id) {
 
 function clearEntryForm() {
   document.getElementById('machine-name').value = '';
+  document.getElementById('btn-clear-machine').style.display = 'none';
   document.getElementById('input-in').value = '';
   document.getElementById('input-out').value = '';
   document.getElementById('input-hours').value = '1';
@@ -981,8 +983,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 機種名入力時の統計表示
   const machineInput = document.getElementById('machine-name');
-  machineInput.addEventListener('input', () => showMachineStats(machineInput.value));
+  const clearBtn = document.getElementById('btn-clear-machine');
+
+  machineInput.addEventListener('input', () => {
+    showMachineStats(machineInput.value);
+    clearBtn.style.display = machineInput.value ? 'flex' : 'none';
+  });
   machineInput.addEventListener('focus', updateMachineDatalist);
+
+  // クリアボタン
+  clearBtn.addEventListener('click', () => {
+    machineInput.value = '';
+    clearBtn.style.display = 'none';
+    document.getElementById('machine-stats').style.display = 'none';
+  });
 
   // 彦一分析
   document.getElementById('btn-hikoichi').addEventListener('click', generateHikoichiAnalysis);

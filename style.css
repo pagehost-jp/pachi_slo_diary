@@ -565,6 +565,40 @@ body {
   cursor: pointer;
 }
 
+.input-with-clear {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-with-clear .input-text {
+  flex: 1;
+  padding-right: 40px;
+}
+
+.btn-clear {
+  position: absolute;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--text-sub);
+  border: none;
+  color: var(--bg-dark);
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.btn-clear:hover {
+  background: var(--loss);
+  color: white;
+}
+
 .unit {
   color: var(--text-sub);
   font-size: 0.9rem;

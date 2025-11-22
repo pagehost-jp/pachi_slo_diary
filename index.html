@@ -133,7 +133,10 @@
       <!-- 機種名 -->
       <div class="form-group">
         <label class="form-label">機種名</label>
-        <input type="text" id="machine-name" class="input-text" placeholder="例: ディスクアップ2" list="machine-list" autocomplete="off">
+        <div class="input-with-clear">
+          <input type="text" id="machine-name" class="input-text" placeholder="例: ディスクアップ2" list="machine-list" autocomplete="off">
+          <button type="button" class="btn-clear" id="btn-clear-machine" style="display: none;">×</button>
+        </div>
         <datalist id="machine-list">
           <!-- JSで動的に追加 -->
         </datalist>
