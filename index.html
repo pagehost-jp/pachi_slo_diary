@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#e94560">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="収支ノート">
+  <title>パチスロ収支ノート</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>収支ノート</h1>
+      <button class="btn-settings" id="btn-settings">設定</button>
+    </header>
+
+    <!-- 設定モーダル -->
+    <div class="modal" id="settings-modal" style="display: none;">
+      <div class="modal-content">
+        <h3>API設定</h3>
+        <div class="form-group">
+          <label class="form-label">Gemini APIキー</label>
+          <div class="input-with-toggle">
+            <input type="password" id="api-key-input" class="input-text" placeholder="AIza...">
+            <button type="button" class="btn-toggle-visibility" id="btn-toggle-key">表示</button>
+          </div>
+          <p class="hint">Google AI Studioで無料取得: <a href="https://aistudio.google.com/app/apikey" target="_blank">こちら</a></p>
+          <p class="hint warning">※自分の端末でのみ入力してください。共用PCではデータが残る可能性があります。</p>
+        </div>
+        <div class="modal-buttons">
+          <button class="btn btn-secondary" id="btn-close-settings">閉じる</button>
+          <button class="btn btn-secondary" id="btn-test-key">テスト</button>
+          <button class="btn btn-primary" id="btn-save-settings">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== 月別一覧画面 ========== -->
+    <section id="monthly-view" class="section">
+      <h2 class="page-title">記録一覧</h2>
+
+      <!-- 年度選択バー -->
+      <div class="year-selector">
+        <button class="btn btn-year-nav" id="btn-prev-year">&lt;</button>
+        <span class="current-year" id="current-year">2025年度</span>
+        <button class="btn btn-year-nav" id="btn-next-year">&gt;</button>
+      </div>
+
+      <!-- 月選択ボタン -->
+      <div class="month-buttons" id="month-buttons">
+        <button class="month-btn" data-month="1">1月</button>
+        <button class="month-btn" data-month="2">2月</button>
+        <button class="month-btn" data-month="3">3月</button>
+        <button class="month-btn" data-month="4">4月</button>
+        <button class="month-btn" data-month="5">5月</button>
+        <button class="month-btn" data-month="6">6月</button>
+        <button class="month-btn" data-month="7">7月</button>
+        <button class="month-btn" data-month="8">8月</button>
+        <button class="month-btn" data-month="9">9月</button>
+        <button class="month-btn" data-month="10">10月</button>
+        <button class="month-btn active" data-month="11">11月</button>
+        <button class="month-btn" data-month="12">12月</button>
+        <button class="month-btn all-btn" data-month="all">全て</button>
+      </div>
+
+      <!-- 月間サマリー -->
+      <div class="monthly-summary">
+        <div class="summary-item">
+          <span class="summary-label">稼働日数</span>
+          <span class="summary-value" id="total-days">0日</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">収支</span>
+          <span class="summary-value" id="monthly-total">¥0</span>
+        </div>
+      </div>
+
+      <!-- 日別リスト -->
+      <div class="daily-list" id="daily-list">
+        <!-- JSで動的に追加 -->
+        <p class="empty-message" id="empty-message">この月のデータはありません</p>
+      </div>
+
+      <!-- 新規追加ボタン -->
+      <button class="btn btn-primary btn-large btn-add" id="btn-add-entry">
+        + 今日の収支を入力
+      </button>
+    </section>
+
+    <!-- ========== 日別入力/詳細画面 ========== -->
+    <section id="entry-view" class="section" style="display: none;">
+      <div class="entry-header">
+        <button class="btn btn-icon" id="btn-back">&lt;</button>
+        <h2 class="entry-date" id="entry-date">2025年11月21日</h2>
+        <button class="btn btn-danger btn-small" id="btn-delete">削除</button>
+      </div>
+
+      <!-- 画像アップロード -->
+      <div class="form-group">
+        <label class="form-label">スクリーンショット</label>
+        <div class="drop-zones">
+          <div class="drop-zone" id="drop-zone-1" data-index="0">
+            <input type="file" class="drop-input" accept="image/*" capture="environment" hidden>
+            <span class="drop-label">1</span>
+            <span class="drop-icon">+</span>
+            <img class="drop-preview" src="" alt="" style="display: none;">
+            <button class="drop-remove" style="display: none;">×</button>
+          </div>
+          <div class="drop-zone" id="drop-zone-2" data-index="1">
+            <input type="file" class="drop-input" accept="image/*" capture="environment" hidden>
+            <span class="drop-label">2</span>
+            <span class="drop-icon">+</span>
+            <img class="drop-preview" src="" alt="" style="display: none;">
+            <button class="drop-remove" style="display: none;">×</button>
+          </div>
+          <div class="drop-zone" id="drop-zone-3" data-index="2">
+            <input type="file" class="drop-input" accept="image/*" capture="environment" hidden>
+            <span class="drop-label">3</span>
+            <span class="drop-icon">+</span>
+            <img class="drop-preview" src="" alt="" style="display: none;">
+            <button class="drop-remove" style="display: none;">×</button>
+          </div>
+          <div class="drop-zone" id="drop-zone-4" data-index="3">
+            <input type="file" class="drop-input" accept="image/*" capture="environment" hidden>
+            <span class="drop-label">4</span>
+            <span class="drop-icon">+</span>
+            <img class="drop-preview" src="" alt="" style="display: none;">
+            <button class="drop-remove" style="display: none;">×</button>
+          </div>
+          <div class="drop-zone" id="drop-zone-5" data-index="4">
+            <input type="file" class="drop-input" accept="image/*" capture="environment" hidden>
+            <span class="drop-label">5</span>
+            <span class="drop-icon">+</span>
+            <img class="drop-preview" src="" alt="" style="display: none;">
+            <button class="drop-remove" style="display: none;">×</button>
+          </div>
+        </div>
+        <p class="drop-hint">タップまたはドラッグ＆ドロップで画像を追加</p>
+        <button class="btn btn-ocr" id="btn-ocr">
+          データを読み取る（OCR）
+        </button>
+        <div class="ocr-result" id="ocr-result" style="display: none;">
+          <div class="ocr-data-grid" id="ocr-data-grid">
+            <!-- JSで動的に追加 -->
+          </div>
+        </div>
+      </div>
+
+      <!-- 機種名 -->
+      <div class="form-group">
+        <label class="form-label">機種名</label>
+        <input type="text" id="machine-name" class="input-text" placeholder="例: ディスクアップ2">
+      </div>
+
+      <!-- IN/OUT入力 -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">IN（投資）</label>
+          <div class="input-with-unit">
+            <input type="number" id="input-in" class="input-text" placeholder="0">
+            <span class="unit">円</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">OUT（回収）</label>
+          <div class="input-with-unit">
+            <input type="number" id="input-out" class="input-text" placeholder="0">
+            <span class="unit">円</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 収支表示 -->
+      <div class="balance-display">
+        <span class="balance-label">収支</span>
+        <span class="balance-value" id="balance-value">¥0</span>
+      </div>
+
+      <!-- メモ -->
+      <div class="form-group">
+        <label class="form-label">メモ（任意）</label>
+        <textarea id="memo" class="input-textarea" placeholder="今日の感想など..."></textarea>
+      </div>
+
+      <!-- ブログ生成 -->
+      <div class="form-group">
+        <label class="form-label">ブログの文体</label>
+        <div class="style-selector" id="style-selector">
+          <label class="style-option">
+            <input type="radio" name="blog-style" value="polite" checked>
+            <span class="style-label">ですます調</span>
+            <span class="style-desc">基本</span>
+          </label>
+          <label class="style-option">
+            <input type="radio" name="blog-style" value="casual">
+            <span class="style-label">口語ラフ調</span>
+            <span class="style-desc">読みやすい</span>
+          </label>
+          <label class="style-option">
+            <input type="radio" name="blog-style" value="live">
+            <span class="style-label">実況系</span>
+            <span class="style-desc">スロ専向け</span>
+          </label>
+        </div>
+        <button class="btn btn-secondary btn-large" id="btn-generate-blog">
+          Gemini AIでブログ生成
+        </button>
+        <div class="blog-output" id="blog-output" style="display: none;">
+          <label class="form-label">生成されたブログ</label>
+          <textarea id="blog-content" class="input-textarea blog-textarea" placeholder="ブログ本文がここに生成されます..."></textarea>
+          <button class="btn btn-small" id="btn-copy-blog">コピー</button>
+        </div>
+      </div>
+
+      <!-- 保存ボタン -->
+      <button class="btn btn-primary btn-large" id="btn-save">
+        保存する
+      </button>
+    </section>
+
+    <footer class="footer">
+      <p>pachi_slo_diary - 収支管理をスマートに</p>
+    </footer>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
