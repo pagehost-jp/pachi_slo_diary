@@ -157,7 +157,13 @@
       <!-- 機種名 -->
       <div class="form-group">
         <label class="form-label">機種名</label>
-        <input type="text" id="machine-name" class="input-text" placeholder="例: ディスクアップ2">
+        <input type="text" id="machine-name" class="input-text" placeholder="例: ディスクアップ2" list="machine-list" autocomplete="off">
+        <datalist id="machine-list">
+          <!-- JSで動的に追加 -->
+        </datalist>
+        <div class="machine-stats" id="machine-stats" style="display: none;">
+          <!-- 選択した機種の統計 -->
+        </div>
       </div>
 
       <!-- IN/OUT入力 -->
@@ -217,6 +223,22 @@
           <label class="form-label">生成されたブログ</label>
           <textarea id="blog-content" class="input-textarea blog-textarea" placeholder="ブログ本文がここに生成されます..."></textarea>
           <button class="btn btn-small" id="btn-copy-blog">コピー</button>
+        </div>
+      </div>
+
+      <!-- 彦一分析 -->
+      <div class="form-group">
+        <button class="btn btn-hikoichi btn-large" id="btn-hikoichi">
+          彦一の実戦チェック
+        </button>
+        <div class="hikoichi-output" id="hikoichi-output" style="display: none;">
+          <div class="hikoichi-header">
+            <span class="hikoichi-icon">📝</span>
+            <span class="hikoichi-title">彦一のメモ帳</span>
+          </div>
+          <div class="hikoichi-content" id="hikoichi-content">
+            <!-- JSで動的に追加 -->
+          </div>
         </div>
       </div>
 

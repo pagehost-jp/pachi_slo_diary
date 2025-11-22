@@ -49,6 +49,21 @@ class OcrRequest(BaseModel):
     api_key: Optional[str] = ""
 
 
+class HikoichiRequest(BaseModel):
+    images: List[str]
+    machine: Optional[str] = ""
+    in_amount: Optional[int] = 0
+    out_amount: Optional[int] = 0
+    memo: Optional[str] = ""
+    machine_stats: Optional[dict] = None
+    api_key: Optional[str] = ""
+
+
+class HikoichiResponse(BaseModel):
+    score: int
+    comment: str
+
+
 class OcrResponse(BaseModel):
     data: dict
     raw_text: str
@@ -261,6 +276,158 @@ JSONのみを返してください。読み取れない項目はnullにしてく
         raise HTTPException(
             status_code=500,
             detail=f"OCR処理中にエラーが発生しました: {str(e)}"
+        )
+
+
+@app.post("/hikoichi-analysis", response_model=HikoichiResponse)
+async def hikoichi_analysis(request: HikoichiRequest):
+    """彦一風の実戦分析"""
+    api_key = request.api_key or GEMINI_API_KEY
+    if not api_key:
+        raise HTTPException(
+            status_code=500,
+            detail="APIキーが設定されていません"
+        )
+
+    try:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-2.0-flash')
+
+        balance = request.out_amount - request.in_amount
+        balance_text = f"+{balance:,}" if balance >= 0 else f"{balance:,}"
+
+        # 過去の統計情報
+        stats_text = ""
+        if request.machine_stats:
+            s = request.machine_stats
+            win_rate = round((s.get('wins', 0) / s.get('count', 1)) * 100) if s.get('count', 0) > 0 else 0
+            stats_text = f"""
+【この機種の過去データ】
+- 実戦回数: {s.get('count', 0)}回
+- 勝率: {win_rate}%
+- 累計収支: {s.get('totalBalance', 0):,}円"""
+
+        memo_section = ""
+        if request.memo:
+            memo_section = f"""
+【打ち手のメモ・感想】
+{request.memo}
+※このメモの内容も必ず分析に含めて、コメントしてください！"""
+        else:
+            memo_section = "【打ち手のメモ】なし"
+
+        prompt = f"""あなたはスラムダンクの相田彦一ですが、実はスロプロとしての深い知識と愛情を持っています。
+パチスロの実戦データを、プロの視点で分析しつつ、打ち手に寄り添って応援してください。
+
+彦一のキャラクター:
+- 口癖は「要チェックや！」「チェックチェック！」
+- メモ魔で何でもメモを取る
+- 関西弁で喋る
+- 観察眼が鋭く、細かい部分に気づく
+- 興奮すると「すごい！これはメモせな！」となる
+- 打ち手が書いたメモや感想にも必ず反応する
+- 何より打ち手の成長を願っている、愛のあるコーチ的存在
+
+【機種知識】※最重要！打った機種の情報を完全に把握した上で分析すること
+この打ち手が打った機種「{request.machine or '不明'}」について、以下の知識を全て頭に入れてからコメントしてください：
+
+＜ディスクアップ2の場合＞
+- 設定1〜6のBB確率: 1/287.4〜1/245.1、RB確率: 1/385.5〜1/287.4
+- 技術介入: 真・技術介入(枠上青7ビタ)成功で15枚役、極・技術介入で+αの出玉
+- DT(ダンスタイム): BB後の一部で突入、消化中は1G連抽選
+- 設定差: 同色BB確率、異色BB確率、RB確率、DT突入率に設定差あり
+- 機械割: 設定1で97.9%、設定6で110.0%
+- 重要: 真ビタ100%なら枚数的に有利、90%以下は練習推奨
+
+＜ディスクアップ ウルトラリミックスの場合＞
+- 4号機ディスクアップのリメイク、ノーマルタイプ
+- 設定1〜6のBB確率・RB確率を把握
+- HYPER BIG搭載、技術介入要素あり
+- DJゾーン: リプレイ連でゾーン突入、BB当選期待度アップ
+- 設定推測: 小役確率、BB中の演出などに設定差
+
+＜その他の機種＞
+その機種の基本スペック、設定差、技術介入要素、立ち回りポイントを把握した上でコメント
+
+【スロプロとしての分析視点】
+- 設定推測：BB確率・RB確率・小役から設定を推測（機種ごとの設定差を踏まえて）
+- 技術介入：その機種の技術介入要素に対する成功率を評価
+- 期待値：機械割と稼働時間から期待収支を計算
+- 立ち回り：その機種特有のヤメ時・続行判断について
+- 過去データとの比較：同じ機種の傾向分析
+
+【大切にすること】※これが一番重要
+- 勝っても負けても、まず打ち手の頑張りを認める
+- 負けた日は「次につながる経験や！」と励ます
+- 改善点は「こうしたらもっと良くなる」とポジティブに伝える
+- 技術介入が上手ければ素直に「すごいやん！」と褒める
+- 厳しい指摘もあるけど、最後は必ず前向きな言葉で締める
+- 「一緒に頑張ろう」という姿勢。上から目線NG
+- 打ち手のメモや感想には共感してから分析する
+
+【今日の実戦データ】
+- 機種: {request.machine or '不明'}
+- 投資: {request.in_amount:,}円
+- 回収: {request.out_amount:,}円
+- 収支: {balance_text}円
+{stats_text}
+
+{memo_section}
+
+【お願い】
+1. 彦一になりきって、この実戦を分析してください
+2. スクリーンショットがあれば、データを読み取って分析に活かしてください
+3. 打ち手が書いたメモ・感想があれば、それに対してもコメント・アドバイスしてください
+4. 良い点、改善点、気づきをメモ風に書いてください
+5. 最後に100点満点でスコアをつけてください
+6. スコアは技術介入成功率、立ち回り、収支、メモの内容などを総合評価
+
+必ず以下のJSON形式で返してください:
+```json
+{{
+  "score": 85,
+  "comment": "彦一のコメント（200-400文字程度）"
+}}
+```"""
+
+        contents = [prompt]
+
+        for img_data in request.images:
+            if ',' in img_data:
+                img_base64 = img_data.split(',')[1]
+            else:
+                img_base64 = img_data
+
+            if img_data.startswith('data:image/png'):
+                mime_type = 'image/png'
+            else:
+                mime_type = 'image/jpeg'
+
+            contents.append({
+                'mime_type': mime_type,
+                'data': img_base64
+            })
+
+        response = model.generate_content(contents)
+        raw_text = response.text
+
+        import json
+        import re
+        json_match = re.search(r'```json\s*(.*?)\s*```', raw_text, re.DOTALL)
+        if json_match:
+            data = json.loads(json_match.group(1))
+        else:
+            data = json.loads(raw_text)
+
+        return HikoichiResponse(
+            score=data.get('score', 50),
+            comment=data.get('comment', '分析できませんでした')
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"彦一分析中にエラーが発生しました: {str(e)}"
         )
 
 

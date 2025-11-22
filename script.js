@@ -451,14 +451,46 @@ function updateOcrButtonState() {
   btn.style.cursor = hasImages ? 'pointer' : 'not-allowed';
 }
 
+// ========== Gemini API直接呼び出し ==========
+async function callGeminiAPI(prompt, images = []) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
+
+  const parts = [{ text: prompt }];
+
+  for (const img of images) {
+    const base64Data = img.includes(',') ? img.split(',')[1] : img;
+    const mimeType = img.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
+    parts.push({
+      inline_data: {
+        mime_type: mimeType,
+        data: base64Data
+      }
+    });
+  }
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts }]
+    })
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || 'API呼び出し失敗');
+  }
+
+  const data = await response.json();
+  return data.candidates[0].content.parts[0].text;
+}
+
 // ========== OCR機能 ==========
 async function performOcr() {
   const validImages = getValidImages();
   if (validImages.length === 0) return;
 
   const btn = document.getElementById('btn-ocr');
-  const resultDiv = document.getElementById('ocr-result');
-  const dataGrid = document.getElementById('ocr-data-grid');
 
   btn.classList.add('loading');
   btn.textContent = '読み取り中...';
@@ -470,35 +502,35 @@ async function performOcr() {
       return;
     }
 
-    const response = await fetch('http://localhost:8000/ocr', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ images: validImages, api_key: geminiApiKey })
-    });
+    const prompt = `この画像はパチスロの実戦データ（Qマイスロなど）のスクリーンショットです。
+ディスクアップ2またはウルトラリミックスのデータを読み取ってください。
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      const errorMsg = errorData.detail || 'OCR失敗';
-      // APIキー関連のエラーを判別
-      if (errorMsg.includes('API key') || errorMsg.includes('API_KEY')) {
-        alert('APIキーが無効です。\n\n正しいAPIキーを設定してください。\nGoogle AI Studio (https://aistudio.google.com/app/apikey) で取得できます。');
-        openSettings();
-        return;
-      }
-      throw new Error(errorMsg);
-    }
+【重要】複数枚の画像がある場合、同じデータが重複している可能性があります。
+重複している場合は無視して、ユニークなデータのみを読み取ってください。
 
-    const result = await response.json();
-    displayOcrResult(result.data);
+読み取るデータ（この6項目のみ）:
+- game_count: ゲーム数（数値のみ）
+- bb_probability: 総BB確率（例: "1/181.58"）
+- rb_probability: RB確率（例: "1/317.75"）
+- skill_true_rate: NORMAL-BB中真・技術介入成功率（例: "100.0%"）
+- skill_extreme_rate: NORMAL-BB中極・技術介入成功率（例: "33.4%"）
+- dance_time_count: DANCE TIME突入回数（数値のみ）
 
-    // 機種名を自動入力
-    if (result.data.machine_name) {
-      document.getElementById('machine-name').value = result.data.machine_name;
-    }
+JSONのみを返してください。読み取れない項目はnullにしてください。`;
+
+    const resultText = await callGeminiAPI(prompt, validImages);
+
+    // JSONを抽出
+    const jsonMatch = resultText.match(/```json\s*([\s\S]*?)\s*```/) || resultText.match(/\{[\s\S]*\}/);
+    const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : resultText;
+    const data = JSON.parse(jsonStr);
+
+    displayOcrResult(data);
 
   } catch (error) {
-    if (error.message.includes('Failed to fetch')) {
-      alert('サーバーに接続できません。\nバックエンドサーバーが起動しているか確認してください。');
+    if (error.message.includes('API key')) {
+      alert('APIキーが無効です。正しいAPIキーを設定してください。');
+      openSettings();
     } else {
       alert('OCR読み取りに失敗しました: ' + error.message);
     }
@@ -592,7 +624,7 @@ async function deleteCurrentEntry() {
   }
 }
 
-// ========== Gemini API連携 ==========
+// ========== ブログ生成 ==========
 async function generateBlog() {
   const validImages = getValidImages();
   if (validImages.length === 0) {
@@ -607,40 +639,56 @@ async function generateBlog() {
   try {
     if (!geminiApiKey) {
       alert('設定からGemini APIキーを入力してください');
+      openSettings();
       btn.classList.remove('loading');
       btn.textContent = 'Gemini AIでブログ生成';
       return;
     }
 
-    // 選択された文体を取得
     const styleRadio = document.querySelector('input[name="blog-style"]:checked');
     const blogStyle = styleRadio ? styleRadio.value : 'polite';
 
-    const response = await fetch('http://localhost:8000/generate-blog', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        images: validImages,
-        machine: document.getElementById('machine-name').value,
-        in_amount: parseInt(document.getElementById('input-in').value) || 0,
-        out_amount: parseInt(document.getElementById('input-out').value) || 0,
-        memo: document.getElementById('memo').value,
-        api_key: geminiApiKey,
-        style: blogStyle
-      })
-    });
+    const machine = document.getElementById('machine-name').value;
+    const inAmount = parseInt(document.getElementById('input-in').value) || 0;
+    const outAmount = parseInt(document.getElementById('input-out').value) || 0;
+    const memo = document.getElementById('memo').value;
+    const balance = outAmount - inAmount;
+    const balanceText = balance >= 0 ? `+${balance.toLocaleString()}` : balance.toLocaleString();
 
-    if (!response.ok) {
-      throw new Error('API呼び出しに失敗しました');
-    }
+    const styleInstructions = {
+      polite: '- ですます調で丁寧に書いてください\n- 読者に語りかけるような親しみやすい文章で',
+      casual: '- 口語調でラフに書いてください\n- 友達に話すようなカジュアルな感じで',
+      live: '- 実況風・ライブ感のある文体で書いてください\n- 「きたああ！」「うおおお！」など興奮表現OK\n- スロット専門ブログ風の熱い文章で'
+    };
 
-    const data = await response.json();
-    document.getElementById('blog-content').value = data.blog;
+    const prompt = `あなたはパチスロブロガーです。
+以下の実戦データのスクリーンショットを分析して、面白くて読みやすいブログ記事を書いてください。
+
+【基本情報】
+- 機種名: ${machine || '（画像から判断してください）'}
+- 投資: ${inAmount.toLocaleString()}円
+- 回収: ${outAmount.toLocaleString()}円
+- 収支: ${balanceText}円
+
+【メモ】
+${memo || 'なし'}
+
+【文体指示】
+${styleInstructions[blogStyle] || styleInstructions.polite}
+
+【お願い】
+1. スクリーンショットのデータを読み取って分析してください
+2. 展開や印象的な場面があれば触れてください
+3. 技術介入成功率が高ければ褒めてください
+4. 300〜500文字程度でまとめてください
+
+ブログ記事:`;
+
+    const blogText = await callGeminiAPI(prompt, validImages);
+    document.getElementById('blog-content').value = blogText;
     document.getElementById('blog-output').style.display = 'block';
   } catch (error) {
-    alert('ブログ生成に失敗しました: ' + error.message + '\n\nバックエンドサーバーが起動しているか確認してください。');
+    alert('ブログ生成に失敗しました: ' + error.message);
   } finally {
     btn.classList.remove('loading');
     btn.textContent = 'Gemini AIでブログ生成';
@@ -671,6 +719,181 @@ async function openTodaysEntry() {
   } else {
     // 新規エントリーを開く
     showEntryView(null);
+  }
+}
+
+// ========== 機種統計 ==========
+async function getMachineStats() {
+  const entries = await getAllEntries();
+  const stats = {};
+
+  entries.forEach(entry => {
+    if (!entry.machine) return;
+    const machine = entry.machine;
+
+    if (!stats[machine]) {
+      stats[machine] = {
+        count: 0,
+        wins: 0,
+        losses: 0,
+        totalBalance: 0
+      };
+    }
+
+    const balance = (entry.out || 0) - (entry.in || 0);
+    stats[machine].count++;
+    stats[machine].totalBalance += balance;
+    if (balance >= 0) {
+      stats[machine].wins++;
+    } else {
+      stats[machine].losses++;
+    }
+  });
+
+  return stats;
+}
+
+async function updateMachineDatalist() {
+  const stats = await getMachineStats();
+  const datalist = document.getElementById('machine-list');
+  datalist.innerHTML = '';
+
+  // 回数順でソート
+  const sorted = Object.entries(stats).sort((a, b) => b[1].count - a[1].count);
+
+  sorted.forEach(([machine, data]) => {
+    const option = document.createElement('option');
+    option.value = machine;
+    option.label = `${machine} (${data.count}回)`;
+    datalist.appendChild(option);
+  });
+}
+
+async function showMachineStats(machineName) {
+  if (!machineName) {
+    document.getElementById('machine-stats').style.display = 'none';
+    return;
+  }
+
+  const stats = await getMachineStats();
+  const data = stats[machineName];
+
+  if (!data) {
+    document.getElementById('machine-stats').style.display = 'none';
+    return;
+  }
+
+  const winRate = data.count > 0 ? Math.round((data.wins / data.count) * 100) : 0;
+  const avgBalance = data.count > 0 ? Math.round(data.totalBalance / data.count) : 0;
+  const balanceClass = data.totalBalance >= 0 ? 'profit' : 'loss';
+
+  document.getElementById('machine-stats').innerHTML = `
+    <div class="machine-stat-item">
+      <span class="machine-stat-label">実戦:</span>
+      <span class="machine-stat-value">${data.count}回</span>
+    </div>
+    <div class="machine-stat-item">
+      <span class="machine-stat-label">勝率:</span>
+      <span class="machine-stat-value">${winRate}%</span>
+    </div>
+    <div class="machine-stat-item">
+      <span class="machine-stat-label">累計:</span>
+      <span class="machine-stat-value ${balanceClass}">${data.totalBalance >= 0 ? '+' : ''}${data.totalBalance.toLocaleString()}円</span>
+    </div>
+    <div class="machine-stat-item">
+      <span class="machine-stat-label">平均:</span>
+      <span class="machine-stat-value ${avgBalance >= 0 ? 'profit' : 'loss'}">${avgBalance >= 0 ? '+' : ''}${avgBalance.toLocaleString()}円</span>
+    </div>
+  `;
+  document.getElementById('machine-stats').style.display = 'flex';
+}
+
+// ========== 彦一分析 ==========
+async function generateHikoichiAnalysis() {
+  const validImages = getValidImages();
+  const btn = document.getElementById('btn-hikoichi');
+  const outputDiv = document.getElementById('hikoichi-output');
+  const contentDiv = document.getElementById('hikoichi-content');
+
+  btn.textContent = 'チェック中...';
+  btn.disabled = true;
+
+  try {
+    if (!geminiApiKey) {
+      alert('設定からGemini APIキーを入力してください');
+      openSettings();
+      return;
+    }
+
+    const machineName = document.getElementById('machine-name').value;
+    const inAmount = parseInt(document.getElementById('input-in').value) || 0;
+    const outAmount = parseInt(document.getElementById('input-out').value) || 0;
+    const memo = document.getElementById('memo').value;
+    const balance = outAmount - inAmount;
+    const balanceText = balance >= 0 ? `+${balance.toLocaleString()}` : balance.toLocaleString();
+
+    const stats = await getMachineStats();
+    const machineData = stats[machineName];
+    let statsText = '';
+    if (machineData) {
+      const winRate = Math.round((machineData.wins / machineData.count) * 100);
+      statsText = `\n【この機種の過去データ】\n- 実戦回数: ${machineData.count}回\n- 勝率: ${winRate}%\n- 累計収支: ${machineData.totalBalance.toLocaleString()}円`;
+    }
+
+    const memoSection = memo ? `\n【打ち手のメモ・感想】\n${memo}\n※このメモの内容も必ず分析に含めて、コメントしてください！` : '';
+
+    const prompt = `あなたはスラムダンクの相田彦一ですが、実はスロプロとしての深い知識と愛情を持っています。
+
+彦一のキャラクター:
+- 口癖は「要チェックや！」「チェックチェック！」
+- メモ魔で何でもメモを取る、関西弁で喋る
+- 打ち手の成長を願っている、愛のあるコーチ的存在
+
+【機種知識】打った機種「${machineName || '不明'}」について完全把握した上で分析すること
+＜ディスクアップ2＞設定1〜6のBB確率1/287.4〜1/245.1、真ビタ100%なら優秀
+＜ウルトラリミックス＞HYPER BIG搭載、技術介入要素あり
+
+【スロプロ視点】設定推測、技術介入評価、期待値、立ち回り判断
+
+【大切にすること】
+- まず打ち手の頑張りを認める
+- 負けた日は「次につながる経験や！」と励ます
+- 改善点はポジティブに伝える、最後は前向きに締める
+
+【今日の実戦データ】
+- 機種: ${machineName || '不明'}
+- 投資: ${inAmount.toLocaleString()}円
+- 回収: ${outAmount.toLocaleString()}円
+- 収支: ${balanceText}円${statsText}${memoSection}
+
+必ず以下のJSON形式で返してください:
+\`\`\`json
+{
+  "score": 85,
+  "comment": "彦一のコメント（200-400文字程度）"
+}
+\`\`\``;
+
+    const resultText = await callGeminiAPI(prompt, validImages);
+
+    const jsonMatch = resultText.match(/```json\s*([\s\S]*?)\s*```/) || resultText.match(/\{[\s\S]*\}/);
+    const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : resultText;
+    const result = JSON.parse(jsonStr);
+
+    contentDiv.innerHTML = `
+      <div class="hikoichi-score">
+        <span class="hikoichi-score-label">彦一スコア</span>
+        <span class="hikoichi-score-value">${result.score}点</span>
+      </div>
+      <div class="hikoichi-comment">${result.comment}</div>
+    `;
+    outputDiv.style.display = 'block';
+
+  } catch (error) {
+    alert('彦一分析に失敗しました: ' + error.message);
+  } finally {
+    btn.textContent = '彦一の実戦チェック';
+    btn.disabled = false;
   }
 }
 
@@ -732,6 +955,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   // IN/OUT入力時の収支計算
   document.getElementById('input-in').addEventListener('input', updateBalance);
   document.getElementById('input-out').addEventListener('input', updateBalance);
+
+  // 機種名入力時の統計表示
+  const machineInput = document.getElementById('machine-name');
+  machineInput.addEventListener('input', () => showMachineStats(machineInput.value));
+  machineInput.addEventListener('focus', updateMachineDatalist);
+
+  // 彦一分析
+  document.getElementById('btn-hikoichi').addEventListener('click', generateHikoichiAnalysis);
 
   // ブログ生成
   document.getElementById('btn-generate-blog').addEventListener('click', generateBlog);
