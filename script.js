@@ -527,11 +527,16 @@ JSONのみを返してください。読み取れない項目はnullにしてく
     displayOcrResult(data);
 
   } catch (error) {
+    console.error('OCR Error:', error);
     if (error.message.includes('API key')) {
       alert('APIキーが無効です。正しいAPIキーを設定してください。');
       openSettings();
     } else {
-      alert('OCR読み取りに失敗しました: ' + error.message);
+      // エラー時も結果エリアに表示
+      const resultDiv = document.getElementById('ocr-result');
+      const dataGrid = document.getElementById('ocr-data-grid');
+      dataGrid.innerHTML = `<div class="ocr-error">読み取りに失敗しました</div>`;
+      resultDiv.style.display = 'block';
     }
   } finally {
     statusDiv.style.display = 'none';
@@ -556,6 +561,7 @@ function displayOcrResult(data) {
 
   dataGrid.innerHTML = '';
 
+  let itemCount = 0;
   for (const [key, label] of Object.entries(labels)) {
     if (data[key] !== null && data[key] !== undefined) {
       const item = document.createElement('div');
@@ -569,10 +575,16 @@ function displayOcrResult(data) {
         <span class="ocr-data-value">${data[key]}</span>
       `;
       dataGrid.appendChild(item);
+      itemCount++;
     }
   }
 
-  resultDiv.style.display = dataGrid.children.length > 0 ? 'block' : 'none';
+  // データがない場合もメッセージを表示
+  if (itemCount === 0) {
+    dataGrid.innerHTML = '<div class="ocr-error">データを読み取れませんでした</div>';
+  }
+
+  resultDiv.style.display = 'block';
 }
 
 // ========== 保存処理 ==========
