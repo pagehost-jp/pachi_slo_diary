@@ -260,6 +260,7 @@ async function loadEntry(id) {
   document.getElementById('machine-name').value = entry.machine || '';
   document.getElementById('input-in').value = entry.in || '';
   document.getElementById('input-out').value = entry.out || '';
+  document.getElementById('input-hours').value = entry.hours || '';
   document.getElementById('memo').value = entry.memo || '';
   document.getElementById('blog-content').value = entry.blog || '';
 
@@ -282,6 +283,7 @@ function clearEntryForm() {
   document.getElementById('machine-name').value = '';
   document.getElementById('input-in').value = '';
   document.getElementById('input-out').value = '';
+  document.getElementById('input-hours').value = '';
   document.getElementById('memo').value = '';
   document.getElementById('blog-content').value = '';
   document.getElementById('blog-output').style.display = 'none';
@@ -568,6 +570,7 @@ async function saveCurrentEntry() {
     machine: document.getElementById('machine-name').value,
     in: parseInt(document.getElementById('input-in').value) || 0,
     out: parseInt(document.getElementById('input-out').value) || 0,
+    hours: parseFloat(document.getElementById('input-hours').value) || 0,
     memo: document.getElementById('memo').value,
     blog: document.getElementById('blog-content').value,
     images: getValidImages()

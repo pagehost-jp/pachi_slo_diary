@@ -116,8 +116,11 @@
         <div class="uploaded-thumbnails" id="uploaded-thumbnails">
           <!-- JSで動的に追加 -->
         </div>
-        <button class="btn btn-ocr" id="btn-ocr">
-          データを読み取る（OCR）
+        <div class="ocr-status" id="ocr-status" style="display: none;">
+          <span class="ocr-loading">読み取り中...</span>
+        </div>
+        <button class="btn btn-ocr btn-small" id="btn-ocr" style="display: none;">
+          再読み取り
         </button>
         <div class="ocr-result" id="ocr-result" style="display: none;">
           <div class="ocr-data-grid" id="ocr-data-grid">
@@ -153,6 +156,15 @@
             <input type="number" id="input-out" class="input-text" placeholder="0">
             <span class="unit">円</span>
           </div>
+        </div>
+      </div>
+
+      <!-- 稼働時間 -->
+      <div class="form-group">
+        <label class="form-label">稼働時間</label>
+        <div class="input-with-unit">
+          <input type="number" id="input-hours" class="input-text input-hours" placeholder="0" step="0.5" min="0">
+          <span class="unit">時間</span>
         </div>
       </div>
 
