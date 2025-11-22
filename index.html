@@ -106,44 +106,16 @@
       <!-- 画像アップロード -->
       <div class="form-group">
         <label class="form-label">スクリーンショット</label>
-        <div class="drop-zones">
-          <div class="drop-zone" id="drop-zone-1" data-index="0">
-            <input type="file" class="drop-input" accept="image/*" capture="environment" hidden>
-            <span class="drop-label">1</span>
-            <span class="drop-icon">+</span>
-            <img class="drop-preview" src="" alt="" style="display: none;">
-            <button class="drop-remove" style="display: none;">×</button>
-          </div>
-          <div class="drop-zone" id="drop-zone-2" data-index="1">
-            <input type="file" class="drop-input" accept="image/*" capture="environment" hidden>
-            <span class="drop-label">2</span>
-            <span class="drop-icon">+</span>
-            <img class="drop-preview" src="" alt="" style="display: none;">
-            <button class="drop-remove" style="display: none;">×</button>
-          </div>
-          <div class="drop-zone" id="drop-zone-3" data-index="2">
-            <input type="file" class="drop-input" accept="image/*" capture="environment" hidden>
-            <span class="drop-label">3</span>
-            <span class="drop-icon">+</span>
-            <img class="drop-preview" src="" alt="" style="display: none;">
-            <button class="drop-remove" style="display: none;">×</button>
-          </div>
-          <div class="drop-zone" id="drop-zone-4" data-index="3">
-            <input type="file" class="drop-input" accept="image/*" capture="environment" hidden>
-            <span class="drop-label">4</span>
-            <span class="drop-icon">+</span>
-            <img class="drop-preview" src="" alt="" style="display: none;">
-            <button class="drop-remove" style="display: none;">×</button>
-          </div>
-          <div class="drop-zone" id="drop-zone-5" data-index="4">
-            <input type="file" class="drop-input" accept="image/*" capture="environment" hidden>
-            <span class="drop-label">5</span>
-            <span class="drop-icon">+</span>
-            <img class="drop-preview" src="" alt="" style="display: none;">
-            <button class="drop-remove" style="display: none;">×</button>
-          </div>
+        <!-- メインアップロードエリア -->
+        <div class="main-drop-zone" id="main-drop-zone">
+          <input type="file" class="drop-input" id="main-drop-input" accept="image/*" multiple hidden>
+          <span class="camera-icon">📷</span>
+          <span class="drop-text">クリックまたはドラッグ＆ドロップで画像を追加</span>
         </div>
-        <p class="drop-hint">タップまたはドラッグ＆ドロップで画像を追加</p>
+        <!-- アップロード済み画像サムネイル -->
+        <div class="uploaded-thumbnails" id="uploaded-thumbnails">
+          <!-- JSで動的に追加 -->
+        </div>
         <button class="btn btn-ocr" id="btn-ocr">
           データを読み取る（OCR）
         </button>

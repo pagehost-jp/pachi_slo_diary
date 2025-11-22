@@ -303,63 +303,63 @@ function updateBalance() {
 
 // ========== 画像処理（ドロップゾーン） ==========
 function initDropZones() {
-  const dropZones = document.querySelectorAll('.drop-zone');
+  const mainDropZone = document.getElementById('main-drop-zone');
+  const mainInput = document.getElementById('main-drop-input');
 
-  dropZones.forEach((zone, index) => {
-    const input = zone.querySelector('.drop-input');
-    const preview = zone.querySelector('.drop-preview');
-    const removeBtn = zone.querySelector('.drop-remove');
-    const label = zone.querySelector('.drop-label');
-    const icon = zone.querySelector('.drop-icon');
+  if (!mainDropZone || !mainInput) return;
 
-    // タップで選択
-    zone.addEventListener('click', (e) => {
-      if (e.target === removeBtn) return;
-      input.click();
-    });
+  // タップでファイル選択
+  mainDropZone.addEventListener('click', () => {
+    mainInput.click();
+  });
 
-    // ファイル選択時
-    input.addEventListener('change', (e) => {
-      if (e.target.files.length > 0) {
-        handleDropZoneFile(zone, index, e.target.files[0]);
-      }
-    });
+  // ファイル選択時（複数対応）
+  mainInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+      handleFiles(e.target.files);
+    }
+  });
 
-    // ドラッグ＆ドロップ
-    zone.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      zone.classList.add('dragover');
-    });
+  // ドラッグ＆ドロップ
+  mainDropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    mainDropZone.classList.add('dragover');
+  });
 
-    zone.addEventListener('dragleave', () => {
-      zone.classList.remove('dragover');
-    });
+  mainDropZone.addEventListener('dragleave', () => {
+    mainDropZone.classList.remove('dragover');
+  });
 
-    zone.addEventListener('drop', (e) => {
-      e.preventDefault();
-      zone.classList.remove('dragover');
-      if (e.dataTransfer.files.length > 0) {
-        handleDropZoneFile(zone, index, e.dataTransfer.files[0]);
-      }
-    });
-
-    // 削除ボタン
-    removeBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      removeDropZoneImage(zone, index);
-    });
+  mainDropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    mainDropZone.classList.remove('dragover');
+    if (e.dataTransfer.files.length > 0) {
+      handleFiles(e.dataTransfer.files);
+    }
   });
 }
 
-function handleDropZoneFile(zone, index, file) {
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    uploadedImages[index] = e.target.result;
-    updateDropZonePreview(zone, e.target.result);
-    // 自動OCR実行
-    autoOcr();
-  };
-  reader.readAsDataURL(file);
+function handleFiles(files) {
+  const maxImages = 5;
+  const currentCount = uploadedImages.filter(img => img).length;
+  const availableSlots = maxImages - currentCount;
+
+  Array.from(files).slice(0, availableSlots).forEach(file => {
+    if (!file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      // 空いているスロットに追加
+      const emptyIndex = uploadedImages.findIndex((img, i) => !img);
+      if (emptyIndex !== -1) {
+        uploadedImages[emptyIndex] = e.target.result;
+      } else if (uploadedImages.length < maxImages) {
+        uploadedImages.push(e.target.result);
+      }
+      renderThumbnails();
+      autoOcr();
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 // 画像アップロード後に自動OCR
@@ -374,69 +374,44 @@ function autoOcr() {
   }, 500);
 }
 
-function updateDropZonePreview(zone, src) {
-  const preview = zone.querySelector('.drop-preview');
-  const removeBtn = zone.querySelector('.drop-remove');
-  const label = zone.querySelector('.drop-label');
-  const icon = zone.querySelector('.drop-icon');
+function renderThumbnails() {
+  const container = document.getElementById('uploaded-thumbnails');
+  if (!container) return;
 
-  preview.src = src;
-  preview.style.display = 'block';
-  removeBtn.style.display = 'flex';
-  label.style.display = 'none';
-  icon.style.display = 'none';
-  zone.classList.add('has-image');
+  container.innerHTML = '';
+
+  uploadedImages.forEach((img, index) => {
+    if (!img) return;
+
+    const thumbItem = document.createElement('div');
+    thumbItem.className = 'thumb-item';
+    thumbItem.innerHTML = `
+      <img src="${img}" alt="画像${index + 1}">
+      <button class="thumb-remove" data-index="${index}">×</button>
+    `;
+    container.appendChild(thumbItem);
+  });
+
+  // 削除ボタンのイベント
+  container.querySelectorAll('.thumb-remove').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const index = parseInt(btn.dataset.index);
+      removeImage(index);
+    });
+  });
 }
 
-function removeDropZoneImage(zone, index) {
-  const preview = zone.querySelector('.drop-preview');
-  const removeBtn = zone.querySelector('.drop-remove');
-  const label = zone.querySelector('.drop-label');
-  const icon = zone.querySelector('.drop-icon');
-  const input = zone.querySelector('.drop-input');
-
+function removeImage(index) {
   uploadedImages[index] = null;
-  preview.src = '';
-  preview.style.display = 'none';
-  removeBtn.style.display = 'none';
-  label.style.display = 'block';
-  icon.style.display = 'block';
-  zone.classList.remove('has-image');
-  input.value = '';
+  // 配列を詰める
+  uploadedImages = uploadedImages.filter(img => img);
+  renderThumbnails();
 }
 
 function renderDropZonePreviews() {
-  const dropZones = document.querySelectorAll('.drop-zone');
-  dropZones.forEach((zone, index) => {
-    if (uploadedImages[index]) {
-      updateDropZonePreview(zone, uploadedImages[index]);
-    } else {
-      removeDropZoneImage(zone, index);
-    }
-  });
-  updateDropZoneVisibility();
-}
-
-// 必要な枠だけ表示（アップロード済み + 次の1枠）
-function updateDropZoneVisibility() {
-  const dropZones = document.querySelectorAll('.drop-zone');
-  let lastFilledIndex = -1;
-
-  // 最後にアップロードされた位置を探す
-  uploadedImages.forEach((img, i) => {
-    if (img) lastFilledIndex = i;
-  });
-
-  // 表示する枠数（アップロード済み + 次の1枠、最大5）
-  const showCount = Math.min(lastFilledIndex + 2, 5);
-
-  dropZones.forEach((zone, index) => {
-    if (index < showCount) {
-      zone.classList.add('visible');
-    } else {
-      zone.classList.remove('visible');
-    }
-  });
+  // 新しい構造に対応
+  renderThumbnails();
 }
 
 function getValidImages() {
@@ -947,7 +922,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ドロップゾーン初期化
   initDropZones();
-  updateDropZoneVisibility(); // 最初は1枠だけ表示
 
   // OCRボタン
   document.getElementById('btn-ocr').addEventListener('click', performOcr);
