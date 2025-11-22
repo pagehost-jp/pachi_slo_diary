@@ -962,6 +962,127 @@ function displayOcrResult(data) {
   }
 
   resultDiv.style.display = 'block';
+
+  // 設定推測を表示
+  displaySettingEstimation(data);
+}
+
+// ========== 設定推測機能 ==========
+function displaySettingEstimation(data) {
+  // ディスクアップ2の設定別理論値
+  const settingData = {
+    bb: { 1: 287.4, 2: 282.5, 3: 278.9, 4: 266.4, 5: 258.0, 6: 245.1 },
+    rb: { 1: 375.2, 2: 366.1, 3: 350.5, 4: 341.3, 5: 324.4, 6: 309.1 },
+    suika: { 1: 56.0, 2: 55.7, 3: 55.7, 4: 55.7, 5: 55.7, 6: 51.9 },
+    common10: { 1: 64.0, 2: 62.7, 3: 59.6, 4: 57.1, 5: 54.2, 6: 50.5 }
+  };
+
+  const results = [];
+  let totalScore = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+
+  // BB確率から推測
+  if (data.bb_probability) {
+    const prob = parseFloat(data.bb_probability.replace('1/', ''));
+    const est = estimateSetting(prob, settingData.bb, true);
+    results.push({ label: 'BB確率', value: data.bb_probability, estimation: est.likely, scores: est.scores });
+    addScores(totalScore, est.scores);
+  }
+
+  // RB確率から推測
+  if (data.rb_probability) {
+    const prob = parseFloat(data.rb_probability.replace('1/', ''));
+    const est = estimateSetting(prob, settingData.rb, true);
+    results.push({ label: 'RB確率', value: data.rb_probability, estimation: est.likely, scores: est.scores });
+    addScores(totalScore, est.scores);
+  }
+
+  // スイカ確率から推測
+  if (data.suika_probability) {
+    const prob = parseFloat(data.suika_probability.replace('1/', ''));
+    const est = estimateSetting(prob, settingData.suika, true);
+    results.push({ label: 'スイカ確率', value: data.suika_probability, estimation: est.likely, scores: est.scores });
+    addScores(totalScore, est.scores);
+  }
+
+  // 共通10枚から推測
+  if (data.common_10mai_probability) {
+    const prob = parseFloat(data.common_10mai_probability.replace('1/', ''));
+    const est = estimateSetting(prob, settingData.common10, true);
+    results.push({ label: '共通10枚', value: data.common_10mai_probability, estimation: est.likely, scores: est.scores });
+    addScores(totalScore, est.scores);
+  }
+
+  // 総合判定
+  const finalSetting = Object.entries(totalScore).sort((a, b) => b[1] - a[1])[0][0];
+
+  // HTML生成
+  let html = '<div class="setting-estimation">';
+  html += '<div class="estimation-header">📊 設定推測</div>';
+
+  results.forEach(r => {
+    html += `<div class="estimation-row">
+      <span class="est-label">${r.label}</span>
+      <span class="est-value">${r.value}</span>
+      <span class="est-result">${r.estimation}</span>
+    </div>`;
+  });
+
+  // 総合判定
+  const confidence = getConfidenceLevel(totalScore, finalSetting);
+  html += `<div class="estimation-total">
+    <span class="total-label">総合判定</span>
+    <span class="total-setting setting-${finalSetting}">設定${finalSetting}</span>
+    <span class="total-confidence">${confidence}</span>
+  </div>`;
+
+  html += '</div>';
+
+  const dataGrid = document.getElementById('ocr-data-grid');
+  dataGrid.insertAdjacentHTML('beforeend', html);
+}
+
+function estimateSetting(value, thresholds, lowerIsBetter) {
+  const scores = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+  let likely = [];
+
+  for (let s = 1; s <= 6; s++) {
+    const diff = Math.abs(value - thresholds[s]);
+    const maxDiff = Math.max(...Object.values(thresholds)) - Math.min(...Object.values(thresholds));
+    const score = Math.max(0, 100 - (diff / maxDiff) * 100);
+    scores[s] = score;
+
+    if (lowerIsBetter) {
+      if (value <= thresholds[s] * 1.05) {
+        likely.push(s);
+      }
+    }
+  }
+
+  // 最も近い設定を特定
+  const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+  const topSettings = sorted.filter(s => s[1] >= sorted[0][1] * 0.9).map(s => s[0]);
+
+  return {
+    likely: topSettings.length <= 2 ? topSettings.join('or') : `${topSettings[0]}〜${topSettings[topSettings.length-1]}`,
+    scores
+  };
+}
+
+function addScores(total, scores) {
+  for (let s = 1; s <= 6; s++) {
+    total[s] += scores[s];
+  }
+}
+
+function getConfidenceLevel(scores, setting) {
+  const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+  const top = sorted[0][1];
+  const second = sorted[1][1];
+  const ratio = top / (top + second);
+
+  if (ratio > 0.65) return '◎ 濃厚';
+  if (ratio > 0.55) return '○ 可能性高';
+  return '△ 様子見';
 }
 
 // ========== 保存処理 ==========
