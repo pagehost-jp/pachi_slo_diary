@@ -260,7 +260,12 @@ async function loadEntry(id) {
   document.getElementById('machine-name').value = entry.machine || '';
   document.getElementById('input-in').value = entry.in || '';
   document.getElementById('input-out').value = entry.out || '';
-  document.getElementById('input-hours').value = entry.hours || '';
+  // 稼働時間（時間と分に分解）
+  const totalMinutes = (entry.hours || 1) * 60;
+  const hours = Math.floor(totalMinutes / 60) || 1;
+  const minutes = Math.round((totalMinutes % 60) / 10) * 10;
+  document.getElementById('input-hours').value = Math.min(hours, 12);
+  document.getElementById('input-minutes').value = minutes;
   document.getElementById('memo').value = entry.memo || '';
   document.getElementById('blog-content').value = entry.blog || '';
 
@@ -283,7 +288,8 @@ function clearEntryForm() {
   document.getElementById('machine-name').value = '';
   document.getElementById('input-in').value = '';
   document.getElementById('input-out').value = '';
-  document.getElementById('input-hours').value = '';
+  document.getElementById('input-hours').value = '1';
+  document.getElementById('input-minutes').value = '0';
   document.getElementById('memo').value = '';
   document.getElementById('blog-content').value = '';
   document.getElementById('blog-output').style.display = 'none';
@@ -570,7 +576,7 @@ async function saveCurrentEntry() {
     machine: document.getElementById('machine-name').value,
     in: parseInt(document.getElementById('input-in').value) || 0,
     out: parseInt(document.getElementById('input-out').value) || 0,
-    hours: parseFloat(document.getElementById('input-hours').value) || 0,
+    hours: (parseInt(document.getElementById('input-hours').value) || 1) + (parseInt(document.getElementById('input-minutes').value) || 0) / 60,
     memo: document.getElementById('memo').value,
     blog: document.getElementById('blog-content').value,
     images: getValidImages()
