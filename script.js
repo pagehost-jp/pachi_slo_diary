@@ -1690,6 +1690,16 @@ async function generateHikoichiAnalysis() {
   const outputDiv = document.getElementById('hikoichi-output');
   const contentDiv = document.getElementById('hikoichi-content');
 
+  // データチェック
+  const inAmount = parseInt(document.getElementById('input-in').value) || 0;
+  const outAmount = parseInt(document.getElementById('input-out').value) || 0;
+  const hasData = validImages.length > 0 || inAmount > 0 || outAmount > 0;
+
+  if (!hasData) {
+    alert('実戦データを入力してください\n（スクリーンショット または 投資/回収）');
+    return;
+  }
+
   btn.textContent = 'チェック中...';
   btn.disabled = true;
 
