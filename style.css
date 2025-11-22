@@ -543,6 +543,28 @@ body {
   border-color: var(--accent);
 }
 
+.input-select:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--text-sub);
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
 .unit {
   color: var(--text-sub);
   font-size: 0.9rem;

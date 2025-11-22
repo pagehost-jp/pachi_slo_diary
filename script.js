@@ -261,11 +261,21 @@ async function loadEntry(id) {
   document.getElementById('input-in').value = entry.in || '';
   document.getElementById('input-out').value = entry.out || '';
   // 稼働時間（時間と分に分解）
-  const totalMinutes = (entry.hours || 1) * 60;
-  const hours = Math.floor(totalMinutes / 60) || 1;
-  const minutes = Math.round((totalMinutes % 60) / 10) * 10;
-  document.getElementById('input-hours').value = Math.min(hours, 12);
-  document.getElementById('input-minutes').value = minutes;
+  const hoursUnknown = entry.hoursUnknown || false;
+  document.getElementById('hours-unknown').checked = hoursUnknown;
+  document.getElementById('input-hours').disabled = hoursUnknown;
+  document.getElementById('input-minutes').disabled = hoursUnknown;
+
+  if (!hoursUnknown && entry.hours) {
+    const totalMinutes = entry.hours * 60;
+    const hours = Math.floor(totalMinutes / 60) || 1;
+    const minutes = Math.round((totalMinutes % 60) / 10) * 10;
+    document.getElementById('input-hours').value = Math.min(hours, 12);
+    document.getElementById('input-minutes').value = minutes;
+  } else {
+    document.getElementById('input-hours').value = '1';
+    document.getElementById('input-minutes').value = '0';
+  }
   document.getElementById('memo').value = entry.memo || '';
   document.getElementById('blog-content').value = entry.blog || '';
 
@@ -290,6 +300,9 @@ function clearEntryForm() {
   document.getElementById('input-out').value = '';
   document.getElementById('input-hours').value = '1';
   document.getElementById('input-minutes').value = '0';
+  document.getElementById('hours-unknown').checked = false;
+  document.getElementById('input-hours').disabled = false;
+  document.getElementById('input-minutes').disabled = false;
   document.getElementById('memo').value = '';
   document.getElementById('blog-content').value = '';
   document.getElementById('blog-output').style.display = 'none';
@@ -580,7 +593,8 @@ async function saveCurrentEntry() {
     machine: document.getElementById('machine-name').value,
     in: parseInt(document.getElementById('input-in').value) || 0,
     out: parseInt(document.getElementById('input-out').value) || 0,
-    hours: (parseInt(document.getElementById('input-hours').value) || 1) + (parseInt(document.getElementById('input-minutes').value) || 0) / 60,
+    hours: document.getElementById('hours-unknown').checked ? null : (parseInt(document.getElementById('input-hours').value) || 1) + (parseInt(document.getElementById('input-minutes').value) || 0) / 60,
+    hoursUnknown: document.getElementById('hours-unknown').checked,
     memo: document.getElementById('memo').value,
     blog: document.getElementById('blog-content').value,
     images: getValidImages()
@@ -947,6 +961,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   // IN/OUT入力時の収支計算
   document.getElementById('input-in').addEventListener('input', updateBalance);
   document.getElementById('input-out').addEventListener('input', updateBalance);
+
+  // 稼働時間不明チェックボックス
+  document.getElementById('hours-unknown').addEventListener('change', (e) => {
+    document.getElementById('input-hours').disabled = e.target.checked;
+    document.getElementById('input-minutes').disabled = e.target.checked;
+  });
 
   // 機種名入力時の統計表示
   const machineInput = document.getElementById('machine-name');
