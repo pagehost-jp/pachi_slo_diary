@@ -968,72 +968,177 @@ function displayOcrResult(data) {
 }
 
 // ========== 設定推測機能 ==========
-function displaySettingEstimation(data) {
-  // ディスクアップ2の設定別理論値
-  const settingData = {
-    bb: { 1: 287.4, 2: 282.5, 3: 278.9, 4: 266.4, 5: 258.0, 6: 245.1 },
-    rb: { 1: 375.2, 2: 366.1, 3: 350.5, 4: 341.3, 5: 324.4, 6: 309.1 },
-    suika: { 1: 56.0, 2: 55.7, 3: 55.7, 4: 55.7, 5: 55.7, 6: 51.9 },
-    common10: { 1: 64.0, 2: 62.7, 3: 59.6, 4: 57.1, 5: 54.2, 6: 50.5 }
-  };
+// ディスクアップ2 メーカー発表値（サミー公式）
+const DISCUP2_SETTINGS = {
+  // ボーナス確率
+  bb: { 1: 287.4, 2: 282.5, 3: 278.9, 4: 266.4, 5: 258.0, 6: 245.1 },
+  rb: { 1: 385.5, 2: 385.5, 3: 376.6, 4: 360.1, 5: 341.3, 6: 322.8 },
+  combined: { 1: 164.5, 2: 163.0, 3: 160.1, 4: 153.2, 5: 146.9, 6: 139.4 },
 
+  // 小役確率（メーカー発表値）
+  suika: { 1: 56.0, 2: 55.7, 3: 55.7, 4: 55.7, 5: 55.7, 6: 51.9 },
+  cherry: { 1: 37.9, 2: 37.4, 3: 37.0, 4: 36.6, 5: 36.1, 6: 35.6 },
+
+  // AT中共通10枚（設定差大・最重要）
+  common10: { 1: 64.0, 2: 62.7, 3: 59.6, 4: 57.1, 5: 54.2, 6: 50.5 },
+
+  // 各項目の設定判別重要度（プロ視点）
+  weight: {
+    bb: 1.0,        // BB確率：参考程度（荒れやすい）
+    rb: 1.2,        // RB確率：設定差あり
+    combined: 1.5,  // 合算：重要
+    suika: 2.0,     // スイカ：設定6判別に超重要
+    cherry: 1.5,    // チェリー：設定差あり
+    common10: 3.0   // 共通10枚：最重要（設定差最大）
+  }
+};
+
+function displaySettingEstimation(data) {
   const results = [];
-  let totalScore = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+  let settingPoints = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+  let totalWeight = 0;
+  let gameCount = 0;
+
+  // ゲーム数を取得（信頼度計算用）
+  if (data.game_count) {
+    gameCount = parseInt(data.game_count.toString().replace(/[^0-9]/g, ''));
+  }
 
   // BB確率から推測
   if (data.bb_probability) {
-    const prob = parseFloat(data.bb_probability.replace('1/', ''));
-    const est = estimateSetting(prob, settingData.bb, true);
-    results.push({ label: 'BB確率', value: data.bb_probability, estimation: est.likely, scores: est.scores });
-    addScores(totalScore, est.scores);
+    const prob = parseProbability(data.bb_probability);
+    if (prob) {
+      const analysis = analyzeByThreshold(prob, DISCUP2_SETTINGS.bb, DISCUP2_SETTINGS.weight.bb);
+      results.push({
+        label: 'BB確率',
+        value: data.bb_probability,
+        likely: analysis.likelySettings,
+        note: analysis.note
+      });
+      addWeightedScores(settingPoints, analysis.scores);
+      totalWeight += DISCUP2_SETTINGS.weight.bb;
+    }
   }
 
   // RB確率から推測
   if (data.rb_probability) {
-    const prob = parseFloat(data.rb_probability.replace('1/', ''));
-    const est = estimateSetting(prob, settingData.rb, true);
-    results.push({ label: 'RB確率', value: data.rb_probability, estimation: est.likely, scores: est.scores });
-    addScores(totalScore, est.scores);
+    const prob = parseProbability(data.rb_probability);
+    if (prob) {
+      const analysis = analyzeByThreshold(prob, DISCUP2_SETTINGS.rb, DISCUP2_SETTINGS.weight.rb);
+      results.push({
+        label: 'RB確率',
+        value: data.rb_probability,
+        likely: analysis.likelySettings,
+        note: analysis.note
+      });
+      addWeightedScores(settingPoints, analysis.scores);
+      totalWeight += DISCUP2_SETTINGS.weight.rb;
+    }
   }
 
-  // スイカ確率から推測
+  // スイカ確率から推測（設定6判別で超重要）
   if (data.suika_probability) {
-    const prob = parseFloat(data.suika_probability.replace('1/', ''));
-    const est = estimateSetting(prob, settingData.suika, true);
-    results.push({ label: 'スイカ確率', value: data.suika_probability, estimation: est.likely, scores: est.scores });
-    addScores(totalScore, est.scores);
+    const prob = parseProbability(data.suika_probability);
+    if (prob) {
+      const analysis = analyzeSuika(prob);
+      results.push({
+        label: 'スイカ確率',
+        value: data.suika_probability,
+        likely: analysis.likelySettings,
+        note: analysis.note,
+        important: true
+      });
+      addWeightedScores(settingPoints, analysis.scores);
+      totalWeight += DISCUP2_SETTINGS.weight.suika;
+    }
   }
 
-  // 共通10枚から推測
-  if (data.common_10mai_probability) {
-    const prob = parseFloat(data.common_10mai_probability.replace('1/', ''));
-    const est = estimateSetting(prob, settingData.common10, true);
-    results.push({ label: '共通10枚', value: data.common_10mai_probability, estimation: est.likely, scores: est.scores });
-    addScores(totalScore, est.scores);
+  // チェリー確率から推測
+  if (data.cherry_probability) {
+    const prob = parseProbability(data.cherry_probability);
+    if (prob) {
+      const analysis = analyzeByThreshold(prob, DISCUP2_SETTINGS.cherry, DISCUP2_SETTINGS.weight.cherry);
+      results.push({
+        label: 'チェリー確率',
+        value: data.cherry_probability,
+        likely: analysis.likelySettings,
+        note: analysis.note
+      });
+      addWeightedScores(settingPoints, analysis.scores);
+      totalWeight += DISCUP2_SETTINGS.weight.cherry;
+    }
   }
+
+  // 共通10枚から推測（最重要指標）
+  if (data.common_10mai_probability) {
+    const prob = parseProbability(data.common_10mai_probability);
+    if (prob) {
+      const analysis = analyzeCommon10(prob);
+      results.push({
+        label: '共通10枚',
+        value: data.common_10mai_probability,
+        likely: analysis.likelySettings,
+        note: analysis.note,
+        critical: true
+      });
+      addWeightedScores(settingPoints, analysis.scores);
+      totalWeight += DISCUP2_SETTINGS.weight.common10;
+    }
+  }
+
+  // 結果がなければ表示しない
+  if (results.length === 0) return;
 
   // 総合判定
-  const finalSetting = Object.entries(totalScore).sort((a, b) => b[1] - a[1])[0][0];
+  const sortedSettings = Object.entries(settingPoints).sort((a, b) => b[1] - a[1]);
+  const topSetting = sortedSettings[0][0];
+  const topScore = sortedSettings[0][1];
+  const secondScore = sortedSettings[1][1];
+
+  // 信頼度計算（ゲーム数と判定要素数を考慮）
+  const confidence = calculateConfidence(topScore, secondScore, gameCount, results.length);
 
   // HTML生成
   let html = '<div class="setting-estimation">';
-  html += '<div class="estimation-header">📊 設定推測</div>';
+  html += '<div class="estimation-header">📊 設定推測【ディスクアップ2】</div>';
+  html += '<div class="estimation-note">※メーカー発表値に基づく判定</div>';
 
   results.forEach(r => {
-    html += `<div class="estimation-row">
+    let rowClass = 'estimation-row';
+    if (r.critical) rowClass += ' critical';
+    else if (r.important) rowClass += ' important';
+
+    html += `<div class="${rowClass}">
       <span class="est-label">${r.label}</span>
       <span class="est-value">${r.value}</span>
-      <span class="est-result">${r.estimation}</span>
+      <span class="est-result">${r.likely}</span>
     </div>`;
+    if (r.note) {
+      html += `<div class="est-note">${r.note}</div>`;
+    }
   });
 
+  // ゲーム数による信頼度注意
+  let gameNote = '';
+  if (gameCount > 0 && gameCount < 2000) {
+    gameNote = `<div class="game-warning">⚠️ ${gameCount}G：試行不足のため参考程度</div>`;
+  } else if (gameCount >= 2000 && gameCount < 5000) {
+    gameNote = `<div class="game-note">📝 ${gameCount}G：ある程度の信頼性</div>`;
+  } else if (gameCount >= 5000) {
+    gameNote = `<div class="game-good">✅ ${gameCount}G：信頼性高い</div>`;
+  }
+
+  html += gameNote;
+
   // 総合判定
-  const confidence = getConfidenceLevel(totalScore, finalSetting);
   html += `<div class="estimation-total">
     <span class="total-label">総合判定</span>
-    <span class="total-setting setting-${finalSetting}">設定${finalSetting}</span>
-    <span class="total-confidence">${confidence}</span>
+    <span class="total-setting setting-${topSetting}">設定${topSetting}</span>
+    <span class="total-confidence ${confidence.class}">${confidence.label}</span>
   </div>`;
+
+  // プロ視点のコメント
+  html += `<div class="pro-comment">${generateProComment(sortedSettings, results, gameCount)}</div>`;
 
   html += '</div>';
 
@@ -1041,48 +1146,187 @@ function displaySettingEstimation(data) {
   dataGrid.insertAdjacentHTML('beforeend', html);
 }
 
-function estimateSetting(value, thresholds, lowerIsBetter) {
+// 確率文字列をパース（"1/52.96" → 52.96）
+function parseProbability(str) {
+  if (!str) return null;
+  const match = str.toString().match(/1\/(\d+\.?\d*)/);
+  return match ? parseFloat(match[1]) : null;
+}
+
+// 閾値ベースの分析
+function analyzeByThreshold(value, thresholds, weight) {
   const scores = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
-  let likely = [];
 
+  // 各設定との距離を計算（値が小さいほど高設定）
   for (let s = 1; s <= 6; s++) {
-    const diff = Math.abs(value - thresholds[s]);
-    const maxDiff = Math.max(...Object.values(thresholds)) - Math.min(...Object.values(thresholds));
-    const score = Math.max(0, 100 - (diff / maxDiff) * 100);
-    scores[s] = score;
-
-    if (lowerIsBetter) {
-      if (value <= thresholds[s] * 1.05) {
-        likely.push(s);
-      }
+    const diff = value - thresholds[s];
+    // 理論値より良い（数値が小さい）場合にスコア加算
+    if (diff <= 0) {
+      scores[s] = (1 + Math.abs(diff) / thresholds[s] * 2) * weight * 10;
+    } else {
+      // 理論値より悪い場合、差に応じてスコア減算
+      scores[s] = Math.max(0, (1 - diff / thresholds[s]) * weight * 10);
     }
   }
 
-  // 最も近い設定を特定
+  // 最も可能性が高い設定を抽出
   const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
-  const topSettings = sorted.filter(s => s[1] >= sorted[0][1] * 0.9).map(s => s[0]);
+  const topScore = sorted[0][1];
+  const likelySettings = sorted.filter(s => s[1] >= topScore * 0.8).map(s => s[0]);
 
   return {
-    likely: topSettings.length <= 2 ? topSettings.join('or') : `${topSettings[0]}〜${topSettings[topSettings.length-1]}`,
-    scores
+    scores,
+    likelySettings: formatLikelySettings(likelySettings),
+    note: ''
   };
 }
 
-function addScores(total, scores) {
+// スイカ確率専用分析（設定6判別で重要）
+function analyzeSuika(value) {
+  const scores = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+  const thresholds = DISCUP2_SETTINGS.suika;
+  const weight = DISCUP2_SETTINGS.weight.suika;
+  let note = '';
+
+  // スイカは設定1と設定6に差がある（設定2-5は同じ）
+  // 1/51.9以下なら設定6濃厚
+  if (value <= 52.5) {
+    scores[6] = weight * 15;
+    note = '🔥 設定6の可能性大！';
+  } else if (value <= 54.0) {
+    scores[6] = weight * 10;
+    scores[5] = weight * 5;
+    note = '設定6寄りの数値';
+  } else if (value <= 56.0) {
+    // 設定2-5の範囲
+    for (let s = 2; s <= 5; s++) scores[s] = weight * 8;
+    scores[6] = weight * 5;
+    scores[1] = weight * 6;
+  } else {
+    // 設定1の可能性
+    scores[1] = weight * 10;
+    for (let s = 2; s <= 5; s++) scores[s] = weight * 5;
+    note = '低設定の可能性あり';
+  }
+
+  const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+  const topScore = sorted[0][1];
+  const likelySettings = sorted.filter(s => s[1] >= topScore * 0.7).map(s => s[0]);
+
+  return {
+    scores,
+    likelySettings: formatLikelySettings(likelySettings),
+    note
+  };
+}
+
+// 共通10枚専用分析（最重要指標）
+function analyzeCommon10(value) {
+  const scores = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+  const thresholds = DISCUP2_SETTINGS.common10;
+  const weight = DISCUP2_SETTINGS.weight.common10;
+  let note = '';
+
+  // 共通10枚は設定差が大きい（1/64.0 〜 1/50.5）
+  if (value <= 51.0) {
+    scores[6] = weight * 15;
+    note = '🔥 設定6濃厚！（理論値1/50.5）';
+  } else if (value <= 54.5) {
+    scores[6] = weight * 10;
+    scores[5] = weight * 12;
+    note = '高設定の挙動';
+  } else if (value <= 58.0) {
+    scores[5] = weight * 8;
+    scores[4] = weight * 10;
+    scores[3] = weight * 6;
+    note = '中間設定の挙動';
+  } else if (value <= 63.0) {
+    scores[3] = weight * 8;
+    scores[2] = weight * 10;
+    scores[1] = weight * 6;
+    note = '低〜中設定の挙動';
+  } else {
+    scores[1] = weight * 12;
+    scores[2] = weight * 8;
+    note = '⚠️ 低設定の可能性高い';
+  }
+
+  const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+  const topScore = sorted[0][1];
+  const likelySettings = sorted.filter(s => s[1] >= topScore * 0.7).map(s => s[0]);
+
+  return {
+    scores,
+    likelySettings: formatLikelySettings(likelySettings),
+    note
+  };
+}
+
+function formatLikelySettings(settings) {
+  if (settings.length === 0) return '-';
+  if (settings.length === 1) return `設定${settings[0]}`;
+  if (settings.length === 2) return `${settings[0]}or${settings[1]}`;
+  return `${settings[0]}〜${settings[settings.length - 1]}`;
+}
+
+function addWeightedScores(total, scores) {
   for (let s = 1; s <= 6; s++) {
-    total[s] += scores[s];
+    total[s] += scores[s] || 0;
   }
 }
 
-function getConfidenceLevel(scores, setting) {
-  const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
-  const top = sorted[0][1];
-  const second = sorted[1][1];
-  const ratio = top / (top + second);
+function calculateConfidence(topScore, secondScore, gameCount, dataCount) {
+  let ratio = topScore / (topScore + secondScore);
 
-  if (ratio > 0.65) return '◎ 濃厚';
-  if (ratio > 0.55) return '○ 可能性高';
-  return '△ 様子見';
+  // ゲーム数による補正
+  if (gameCount > 0) {
+    if (gameCount < 1000) ratio *= 0.6;
+    else if (gameCount < 2000) ratio *= 0.75;
+    else if (gameCount < 3000) ratio *= 0.85;
+    else if (gameCount < 5000) ratio *= 0.95;
+  }
+
+  // データ数による補正
+  if (dataCount < 3) ratio *= 0.8;
+
+  if (ratio > 0.7) return { label: '◎ 濃厚', class: 'conf-high' };
+  if (ratio > 0.6) return { label: '○ 可能性高', class: 'conf-mid' };
+  if (ratio > 0.5) return { label: '△ やや期待', class: 'conf-low' };
+  return { label: '？ 判別困難', class: 'conf-unknown' };
+}
+
+function generateProComment(sortedSettings, results, gameCount) {
+  const top = sortedSettings[0][0];
+  const topScore = sortedSettings[0][1];
+  const secondScore = sortedSettings[1][1];
+
+  let comment = '';
+
+  // 共通10枚の結果をチェック
+  const common10Result = results.find(r => r.label === '共通10枚');
+  const suikaResult = results.find(r => r.label === 'スイカ確率');
+
+  if (top === '6') {
+    if (common10Result && common10Result.note.includes('濃厚')) {
+      comment = '【プロ目線】共通10枚が設定6水準。粘る価値あり。';
+    } else if (suikaResult && suikaResult.note.includes('設定6')) {
+      comment = '【プロ目線】スイカ確率が優秀。設定6に期待できる。';
+    } else {
+      comment = '【プロ目線】高設定示唆あり。他の要素も確認を。';
+    }
+  } else if (top === '5' || top === '4') {
+    comment = '【プロ目線】中〜高設定の可能性。続行して様子見。';
+  } else if (top === '1' || top === '2') {
+    if (gameCount >= 3000) {
+      comment = '【プロ目線】低設定濃厚。ヤメ時を検討。';
+    } else {
+      comment = '【プロ目線】低設定寄りだが試行不足。もう少し様子見。';
+    }
+  } else {
+    comment = '【プロ目線】判別要素が揃うまで続行推奨。';
+  }
+
+  return comment;
 }
 
 // ========== 保存処理 ==========
@@ -1704,17 +1948,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-google-login').addEventListener('click', loginWithGoogle);
   document.getElementById('btn-logout').addEventListener('click', logout);
 
-  // バックアップ機能
-  document.getElementById('btn-export').addEventListener('click', exportData);
-  document.getElementById('btn-import').addEventListener('click', () => {
-    document.getElementById('import-file').click();
-  });
-  document.getElementById('import-file').addEventListener('change', (e) => {
-    if (e.target.files.length > 0) {
-      importData(e.target.files[0]);
-      e.target.value = ''; // リセット
-    }
-  });
+  // バックアップ機能（要素が存在する場合のみ）
+  const exportBtn = document.getElementById('btn-export');
+  const importBtn = document.getElementById('btn-import');
+  const importFile = document.getElementById('import-file');
+
+  if (exportBtn) exportBtn.addEventListener('click', exportData);
+  if (importBtn && importFile) {
+    importBtn.addEventListener('click', () => importFile.click());
+  }
+  if (importFile) {
+    importFile.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        importData(e.target.files[0]);
+        e.target.value = ''; // リセット
+      }
+    });
+  }
 
   // APIキーがあれば入力欄にセット、なければ設定画面を表示
   if (geminiApiKey) {
