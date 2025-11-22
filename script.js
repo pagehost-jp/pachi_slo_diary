@@ -763,10 +763,9 @@ async function updateMachineDatalist() {
   // 回数順でソート
   const sorted = Object.entries(stats).sort((a, b) => b[1].count - a[1].count);
 
-  sorted.forEach(([machine, data]) => {
+  sorted.forEach(([machine]) => {
     const option = document.createElement('option');
     option.value = machine;
-    option.label = `${machine} (${data.count}回)`;
     datalist.appendChild(option);
   });
 }
