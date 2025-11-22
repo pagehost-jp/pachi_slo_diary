@@ -474,14 +474,17 @@ async function performOcr() {
   if (validImages.length === 0) return;
 
   const btn = document.getElementById('btn-ocr');
+  const statusDiv = document.getElementById('ocr-status');
 
-  btn.classList.add('loading');
-  btn.textContent = '読み取り中...';
+  // ローディング表示
+  statusDiv.style.display = 'block';
+  btn.style.display = 'none';
 
   try {
     if (!geminiApiKey) {
       alert('設定からGemini APIキーを入力してください');
       openSettings();
+      statusDiv.style.display = 'none';
       return;
     }
 
@@ -518,8 +521,9 @@ JSONのみを返してください。読み取れない項目はnullにしてく
       alert('OCR読み取りに失敗しました: ' + error.message);
     }
   } finally {
-    btn.classList.remove('loading');
-    btn.textContent = 'データを読み取る（OCR）';
+    statusDiv.style.display = 'none';
+    btn.style.display = 'inline-block';
+    btn.textContent = '再読み取り';
   }
 }
 
