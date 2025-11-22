@@ -16,6 +16,7 @@ let currentMonth = new Date().getMonth() + 1;
 let showAllMonths = false;
 let currentEntryId = null;
 let uploadedImages = [];
+let currentOcrData = null;
 
 // ========== IndexedDB初期化 ==========
 async function initDB() {
@@ -257,6 +258,8 @@ async function loadEntry(id) {
 
   document.getElementById('entry-date').textContent =
     `${entry.year}年${entry.month}月${entry.day}日`;
+  document.getElementById('hall-name').value = entry.hall || '';
+  document.getElementById('btn-clear-hall').style.display = entry.hall ? 'flex' : 'none';
   document.getElementById('machine-name').value = entry.machine || '';
   document.getElementById('btn-clear-machine').style.display = entry.machine ? 'flex' : 'none';
   document.getElementById('input-in').value = entry.in || '';
@@ -292,10 +295,23 @@ async function loadEntry(id) {
   });
   renderDropZonePreviews();
 
+  // OCRデータを復元
+  if (entry.ocrData) {
+    currentOcrData = entry.ocrData;
+    displayOcrResult(entry.ocrData);
+    document.getElementById('btn-ocr').style.display = 'inline-block';
+  } else {
+    currentOcrData = null;
+    document.getElementById('ocr-result').style.display = 'none';
+    document.getElementById('btn-ocr').style.display = images.length > 0 ? 'inline-block' : 'none';
+  }
+
   updateBalance();
 }
 
 function clearEntryForm() {
+  document.getElementById('hall-name').value = '';
+  document.getElementById('btn-clear-hall').style.display = 'none';
   document.getElementById('machine-name').value = '';
   document.getElementById('btn-clear-machine').style.display = 'none';
   document.getElementById('input-in').value = '';
@@ -309,7 +325,9 @@ function clearEntryForm() {
   document.getElementById('blog-content').value = '';
   document.getElementById('blog-output').style.display = 'none';
   document.getElementById('ocr-result').style.display = 'none';
+  document.getElementById('btn-ocr').style.display = 'none';
   uploadedImages = [null, null, null, null, null];
+  currentOcrData = null;
   renderDropZonePreviews();
   updateBalance();
 }
@@ -322,6 +340,21 @@ function updateBalance() {
   const balanceEl = document.getElementById('balance-value');
   balanceEl.textContent = `${balance >= 0 ? '+' : ''}¥${balance.toLocaleString()}`;
   balanceEl.className = `balance-value ${balance >= 0 ? 'profit' : 'loss'}`;
+
+  // 時給計算
+  const hoursUnknown = document.getElementById('hours-unknown').checked;
+  const hourlyDiv = document.getElementById('balance-hourly');
+  const hourlyEl = document.getElementById('hourly-value');
+
+  if (hoursUnknown) {
+    hourlyDiv.style.display = 'none';
+  } else {
+    const hours = (parseInt(document.getElementById('input-hours').value) || 1) + (parseInt(document.getElementById('input-minutes').value) || 0) / 60;
+    const hourlyRate = Math.round(balance / hours);
+    hourlyEl.textContent = `${hourlyRate >= 0 ? '+' : ''}¥${hourlyRate.toLocaleString()}`;
+    hourlyEl.className = `hourly-value ${hourlyRate >= 0 ? 'profit' : 'loss'}`;
+    hourlyDiv.style.display = 'block';
+  }
 }
 
 // ========== 画像処理（ドロップゾーン） ==========
@@ -548,6 +581,9 @@ JSONのみを返してください。読み取れない項目はnullにしてく
 }
 
 function displayOcrResult(data) {
+  // OCRデータを保存
+  currentOcrData = data;
+
   const resultDiv = document.getElementById('ocr-result');
   const dataGrid = document.getElementById('ocr-data-grid');
 
@@ -604,6 +640,7 @@ async function saveCurrentEntry() {
     month: parseInt(match[2]),
     day: parseInt(match[3]),
     date: `${match[1]}-${String(match[2]).padStart(2, '0')}-${String(match[3]).padStart(2, '0')}`,
+    hall: document.getElementById('hall-name').value,
     machine: document.getElementById('machine-name').value,
     in: parseInt(document.getElementById('input-in').value) || 0,
     out: parseInt(document.getElementById('input-out').value) || 0,
@@ -611,7 +648,8 @@ async function saveCurrentEntry() {
     hoursUnknown: document.getElementById('hours-unknown').checked,
     memo: document.getElementById('memo').value,
     blog: document.getElementById('blog-content').value,
-    images: getValidImages()
+    images: getValidImages(),
+    ocrData: currentOcrData
   };
 
   if (currentEntryId) {
@@ -823,6 +861,39 @@ async function showMachineStats(machineName) {
   document.getElementById('machine-stats').style.display = 'flex';
 }
 
+// ========== ホール統計 ==========
+async function getHallStats() {
+  const entries = await getAllEntries();
+  const stats = {};
+
+  entries.forEach(entry => {
+    if (!entry.hall) return;
+    const hall = entry.hall;
+
+    if (!stats[hall]) {
+      stats[hall] = { count: 0 };
+    }
+    stats[hall].count++;
+  });
+
+  return stats;
+}
+
+async function updateHallDatalist() {
+  const stats = await getHallStats();
+  const datalist = document.getElementById('hall-list');
+  datalist.innerHTML = '';
+
+  // 回数順でソート（よく行く店が上）
+  const sorted = Object.entries(stats).sort((a, b) => b[1].count - a[1].count);
+
+  sorted.forEach(([hall]) => {
+    const option = document.createElement('option');
+    option.value = hall;
+    datalist.appendChild(option);
+  });
+}
+
 // ========== 彦一分析 ==========
 async function generateHikoichiAnalysis() {
   const validImages = getValidImages();
@@ -975,10 +1046,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('input-in').addEventListener('input', updateBalance);
   document.getElementById('input-out').addEventListener('input', updateBalance);
 
+  // 稼働時間変更時も時給を更新
+  document.getElementById('input-hours').addEventListener('change', updateBalance);
+  document.getElementById('input-minutes').addEventListener('change', updateBalance);
+
   // 稼働時間不明チェックボックス
   document.getElementById('hours-unknown').addEventListener('change', (e) => {
     document.getElementById('input-hours').disabled = e.target.checked;
     document.getElementById('input-minutes').disabled = e.target.checked;
+    updateBalance();
   });
 
   // 機種名入力時の統計表示
@@ -991,11 +1067,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   machineInput.addEventListener('focus', updateMachineDatalist);
 
-  // クリアボタン
+  // クリアボタン（機種名）
   clearBtn.addEventListener('click', () => {
     machineInput.value = '';
     clearBtn.style.display = 'none';
     document.getElementById('machine-stats').style.display = 'none';
+  });
+
+  // ホール名入力
+  const hallInput = document.getElementById('hall-name');
+  const hallClearBtn = document.getElementById('btn-clear-hall');
+
+  hallInput.addEventListener('input', () => {
+    hallClearBtn.style.display = hallInput.value ? 'flex' : 'none';
+  });
+  hallInput.addEventListener('focus', updateHallDatalist);
+
+  // クリアボタン（ホール名）
+  hallClearBtn.addEventListener('click', () => {
+    hallInput.value = '';
+    hallClearBtn.style.display = 'none';
   });
 
   // 彦一分析

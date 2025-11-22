@@ -824,13 +824,19 @@ body {
   background: var(--bg-dark);
   border-radius: 12px;
   padding: 20px;
-  text-align: center;
+  display: flex;
+  justify-content: center;
+  gap: 40px;
   margin-bottom: 20px;
 }
 
-.balance-label {
+.balance-main, .balance-hourly {
+  text-align: center;
+}
+
+.balance-label, .hourly-label {
   display: block;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: var(--text-sub);
   margin-bottom: 8px;
 }
@@ -841,11 +847,17 @@ body {
   color: var(--text-main);
 }
 
-.balance-value.profit {
+.hourly-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.balance-value.profit, .hourly-value.profit {
   color: var(--profit);
 }
 
-.balance-value.loss {
+.balance-value.loss, .hourly-value.loss {
   color: var(--loss);
 }
 

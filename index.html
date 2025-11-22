@@ -130,6 +130,18 @@
         </div>
       </div>
 
+      <!-- ホール名 -->
+      <div class="form-group">
+        <label class="form-label">ホール名</label>
+        <div class="input-with-clear">
+          <input type="text" id="hall-name" class="input-text" placeholder="例: マルハン新宿店" list="hall-list" autocomplete="off">
+          <button type="button" class="btn-clear" id="btn-clear-hall" style="display: none;">×</button>
+        </div>
+        <datalist id="hall-list">
+          <!-- JSで動的に追加 -->
+        </datalist>
+      </div>
+
       <!-- 機種名 -->
       <div class="form-group">
         <label class="form-label">機種名</label>
@@ -200,8 +212,14 @@
 
       <!-- 収支表示 -->
       <div class="balance-display">
-        <span class="balance-label">収支</span>
-        <span class="balance-value" id="balance-value">¥0</span>
+        <div class="balance-main">
+          <span class="balance-label">収支</span>
+          <span class="balance-value" id="balance-value">¥0</span>
+        </div>
+        <div class="balance-hourly" id="balance-hourly" style="display: none;">
+          <span class="hourly-label">時給</span>
+          <span class="hourly-value" id="hourly-value">¥0</span>
+        </div>
       </div>
 
       <!-- メモ -->
