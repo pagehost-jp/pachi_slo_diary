@@ -250,6 +250,87 @@ async function loadMonthlyData() {
   const totalEl = document.getElementById('monthly-total');
   totalEl.textContent = `${totalBalance >= 0 ? '+' : ''}¥${totalBalance.toLocaleString()}`;
   totalEl.className = `summary-value ${totalBalance >= 0 ? 'profit' : 'loss'}`;
+
+  // カレンダーも更新
+  renderCalendar(entries);
+}
+
+// カレンダー表示
+function renderCalendar(entries) {
+  if (showAllMonths) {
+    document.getElementById('calendar-view').style.display = 'none';
+    document.querySelector('.view-toggle').style.display = 'none';
+    return;
+  }
+  document.querySelector('.view-toggle').style.display = 'flex';
+
+  const grid = document.getElementById('calendar-grid');
+  grid.innerHTML = '';
+
+  // 月の日数と最初の曜日を取得
+  const firstDay = new Date(currentYear, currentMonth - 1, 1);
+  const lastDay = new Date(currentYear, currentMonth, 0);
+  const daysInMonth = lastDay.getDate();
+  const startDayOfWeek = firstDay.getDay();
+
+  // エントリーを日付でマップ
+  const entryMap = {};
+  entries.forEach(entry => {
+    if (entry.month === currentMonth) {
+      entryMap[entry.day] = entry;
+    }
+  });
+
+  const today = new Date();
+  const isCurrentMonth = today.getFullYear() === currentYear && today.getMonth() + 1 === currentMonth;
+
+  // 空白セルを追加
+  for (let i = 0; i < startDayOfWeek; i++) {
+    const emptyCell = document.createElement('div');
+    emptyCell.className = 'calendar-day empty';
+    grid.appendChild(emptyCell);
+  }
+
+  // 日付セルを追加
+  for (let day = 1; day <= daysInMonth; day++) {
+    const cell = document.createElement('div');
+    cell.className = 'calendar-day';
+
+    const entry = entryMap[day];
+    if (entry) {
+      const balance = (entry.out || 0) - (entry.in || 0);
+      cell.classList.add('has-entry');
+      cell.classList.add(balance >= 0 ? 'profit' : 'loss');
+      cell.innerHTML = `
+        <span class="day-number">${day}</span>
+        <span class="day-balance ${balance >= 0 ? 'profit' : 'loss'}">${balance >= 0 ? '+' : ''}${(balance / 1000).toFixed(0)}k</span>
+      `;
+      cell.onclick = () => showEntryView(entry.id);
+    } else {
+      cell.innerHTML = `<span class="day-number">${day}</span>`;
+      cell.onclick = () => openEntryForDate(currentYear, currentMonth, day);
+    }
+
+    if (isCurrentMonth && day === today.getDate()) {
+      cell.classList.add('today');
+    }
+
+    grid.appendChild(cell);
+  }
+}
+
+// 特定の日付でエントリーを開く
+async function openEntryForDate(year, month, day) {
+  const entries = await getEntriesByMonth(year, month);
+  const existingEntry = entries.find(e => e.day === day);
+
+  if (existingEntry) {
+    showEntryView(existingEntry.id);
+  } else {
+    showEntryView(null);
+    // 日付を設定
+    document.getElementById('entry-date').textContent = `${year}年${month}月${day}日`;
+  }
 }
 
 async function loadEntry(id) {
@@ -988,6 +1069,99 @@ async function generateHikoichiAnalysis() {
   }
 }
 
+// ========== グラフ表示 ==========
+let balanceChart = null;
+
+async function showChart(chartType = 'monthly') {
+  document.getElementById('chart-modal').style.display = 'flex';
+
+  const entries = await getEntriesByYear(currentYear);
+
+  // 月別データを集計
+  const monthlyData = {};
+  for (let i = 1; i <= 12; i++) {
+    monthlyData[i] = 0;
+  }
+
+  entries.forEach(entry => {
+    const balance = (entry.out || 0) - (entry.in || 0);
+    monthlyData[entry.month] += balance;
+  });
+
+  const labels = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+  let data, label;
+
+  if (chartType === 'monthly') {
+    data = Object.values(monthlyData);
+    label = '月別収支';
+  } else {
+    // 累計
+    let cumulative = 0;
+    data = Object.values(monthlyData).map(val => {
+      cumulative += val;
+      return cumulative;
+    });
+    label = '累計収支';
+  }
+
+  const ctx = document.getElementById('balance-chart').getContext('2d');
+
+  if (balanceChart) {
+    balanceChart.destroy();
+  }
+
+  balanceChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: label,
+        data: data,
+        backgroundColor: data.map(val => val >= 0 ? 'rgba(0, 255, 136, 0.6)' : 'rgba(255, 71, 87, 0.6)'),
+        borderColor: data.map(val => val >= 0 ? '#00ff88' : '#ff4757'),
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: 'rgba(255, 255, 255, 0.1)'
+          },
+          ticks: {
+            color: '#a0a0a0',
+            callback: (value) => (value / 1000) + 'k'
+          }
+        },
+        x: {
+          grid: {
+            display: false
+          },
+          ticks: {
+            color: '#a0a0a0'
+          }
+        }
+      }
+    }
+  });
+}
+
+function closeChart() {
+  document.getElementById('chart-modal').style.display = 'none';
+  if (balanceChart) {
+    balanceChart.destroy();
+    balanceChart = null;
+  }
+}
+
 // ========== 年・月移動 ==========
 function prevYear() {
   currentYear--;
@@ -1028,6 +1202,31 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 月ボタン
   document.querySelectorAll('.month-btn').forEach(btn => {
     btn.addEventListener('click', () => selectMonth(btn.dataset.month));
+  });
+
+  // 表示切替（リスト/カレンダー）
+  document.getElementById('btn-list-view').addEventListener('click', () => {
+    document.getElementById('btn-list-view').classList.add('active');
+    document.getElementById('btn-calendar-view').classList.remove('active');
+    document.getElementById('daily-list').style.display = 'flex';
+    document.getElementById('calendar-view').style.display = 'none';
+  });
+  document.getElementById('btn-calendar-view').addEventListener('click', () => {
+    document.getElementById('btn-calendar-view').classList.add('active');
+    document.getElementById('btn-list-view').classList.remove('active');
+    document.getElementById('calendar-view').style.display = 'block';
+    document.getElementById('daily-list').style.display = 'none';
+  });
+
+  // グラフ表示
+  document.getElementById('btn-chart').addEventListener('click', () => showChart('monthly'));
+  document.getElementById('btn-close-chart').addEventListener('click', closeChart);
+  document.querySelectorAll('.chart-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      showChart(tab.dataset.chart);
+    });
   });
 
   // エントリー操作
@@ -1188,3 +1387,16 @@ async function testApiKey() {
 
 // グローバル関数（onclick用）
 window.removeImage = removeImage;
+
+// ========== Service Worker登録 ==========
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then((registration) => {
+        console.log('SW registered:', registration.scope);
+      })
+      .catch((error) => {
+        console.log('SW registration failed:', error);
+      });
+  });
+}
