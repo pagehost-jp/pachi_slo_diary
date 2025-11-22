@@ -874,13 +874,16 @@ async function performOcr() {
 【重要】複数枚の画像がある場合、同じデータが重複している可能性があります。
 重複している場合は無視して、ユニークなデータのみを読み取ってください。
 
-読み取るデータ（この6項目のみ）:
+読み取るデータ（この9項目）:
 - game_count: ゲーム数（数値のみ）
 - bb_probability: 総BB確率（例: "1/181.58"）
 - rb_probability: RB確率（例: "1/317.75"）
 - skill_true_rate: NORMAL-BB中真・技術介入成功率（例: "100.0%"）
 - skill_extreme_rate: NORMAL-BB中極・技術介入成功率（例: "33.4%"）
 - dance_time_count: DANCE TIME突入回数（数値のみ）
+- suika_probability: スイカ確率（例: "1/52.96"）
+- cherry_probability: チェリー確率（例: "1/36.32"）
+- common_10mai_probability: AT中共通10枚確率（例: "1/55.91"）
 
 JSONのみを返してください。読み取れない項目はnullにしてください。`;
 
@@ -919,14 +922,17 @@ function displayOcrResult(data) {
   const resultDiv = document.getElementById('ocr-result');
   const dataGrid = document.getElementById('ocr-data-grid');
 
-  // プロ目線で重要な6項目のみ
+  // プロ目線で重要な9項目
   const labels = {
     game_count: 'ゲーム数',
     bb_probability: 'BB確率',
     rb_probability: 'RB確率',
     skill_true_rate: '真ビタ成功率',
     skill_extreme_rate: '極ビタ成功率',
-    dance_time_count: 'DT突入'
+    dance_time_count: 'DT突入',
+    suika_probability: 'スイカ確率',
+    cherry_probability: 'チェリー確率',
+    common_10mai_probability: '共通10枚'
   };
 
   dataGrid.innerHTML = '';
@@ -936,8 +942,9 @@ function displayOcrResult(data) {
     if (data[key] !== null && data[key] !== undefined) {
       const item = document.createElement('div');
       item.className = 'ocr-data-item';
-      // 真ビタ/極ビタは重要なのでハイライト
-      if (key === 'skill_true_rate' || key === 'skill_extreme_rate') {
+      // 設定推測に重要な項目はハイライト
+      if (key === 'skill_true_rate' || key === 'skill_extreme_rate' ||
+          key === 'suika_probability' || key === 'cherry_probability' || key === 'common_10mai_probability') {
         item.classList.add('highlight');
       }
       item.innerHTML = `
