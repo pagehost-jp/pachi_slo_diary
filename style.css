@@ -314,15 +314,15 @@ body {
 .btn-add-top {
   padding: 8px 16px;
   font-size: 0.9rem;
-  background: #a8e6cf;
+  background: #8ecfb0;
   border: none;
   color: #1a1a2e;
-  box-shadow: 0 4px 15px rgba(168, 230, 207, 0.4);
+  box-shadow: 0 4px 15px rgba(142, 207, 176, 0.4);
 }
 
 .btn-add-top:hover {
-  background: #8ed4b8;
-  box-shadow: 0 6px 20px rgba(168, 230, 207, 0.5);
+  background: #7ac4a3;
+  box-shadow: 0 6px 20px rgba(142, 207, 176, 0.5);
 }
 
 /* ========== Year Selector ========== */
