@@ -1588,6 +1588,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('entry-date').textContent = `${year}年${month}月${day}日`;
   });
 
+  // 日付エリアクリックでピッカーを開く（PC対応）
+  document.querySelector('.date-picker-wrapper').addEventListener('click', () => {
+    dateInput.showPicker ? dateInput.showPicker() : dateInput.focus();
+  });
+
   // ドロップゾーン初期化
   initDropZones();
 
