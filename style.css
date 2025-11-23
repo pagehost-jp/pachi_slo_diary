@@ -64,9 +64,19 @@ body {
 }
 
 .btn-back-header {
-  width: 36px;
-  height: 36px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  color: var(--text-sub);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
   flex-shrink: 0;
+}
+
+.btn-back-header:hover {
+  border-color: var(--accent);
+  color: var(--text-main);
 }
 
 .header-right {
