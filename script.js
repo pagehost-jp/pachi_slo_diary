@@ -454,7 +454,7 @@ async function loadMonthlyData() {
   if (entries.length === 0) {
     emptyMessage.style.display = 'block';
     document.getElementById('total-days').textContent = '0日';
-    document.getElementById('monthly-total').textContent = '¥0';
+    document.getElementById('monthly-total').textContent = '0枚';
     document.getElementById('monthly-total').className = 'summary-value';
     return;
   }
@@ -489,7 +489,7 @@ async function loadMonthlyData() {
         <p class="daily-machine">${entry.machine || '未入力'}</p>
       </div>
       <span class="daily-balance ${balance >= 0 ? 'profit' : 'loss'}">
-        ${balance >= 0 ? '+' : ''}${balance.toLocaleString()}円
+        ${balance >= 0 ? '+' : ''}${balance.toLocaleString()}枚
       </span>
     `;
 
@@ -499,7 +499,7 @@ async function loadMonthlyData() {
   // サマリー更新
   document.getElementById('total-days').textContent = `${entries.length}日`;
   const totalEl = document.getElementById('monthly-total');
-  totalEl.textContent = `${totalBalance >= 0 ? '+' : ''}¥${totalBalance.toLocaleString()}`;
+  totalEl.textContent = `${totalBalance >= 0 ? '+' : ''}${totalBalance.toLocaleString()}枚`;
   totalEl.className = `summary-value ${totalBalance >= 0 ? 'profit' : 'loss'}`;
 
   // カレンダーも更新
@@ -671,7 +671,7 @@ function updateBalance() {
   const balance = outValue - inValue;
 
   const balanceEl = document.getElementById('balance-value');
-  balanceEl.textContent = `${balance >= 0 ? '+' : ''}¥${balance.toLocaleString()}`;
+  balanceEl.textContent = `${balance >= 0 ? '+' : ''}${balance.toLocaleString()}枚`;
   balanceEl.className = `balance-value ${balance >= 0 ? 'profit' : 'loss'}`;
 
   // 時給計算
@@ -684,7 +684,7 @@ function updateBalance() {
   } else {
     const hours = (parseInt(document.getElementById('input-hours').value) || 1) + (parseInt(document.getElementById('input-minutes').value) || 0) / 60;
     const hourlyRate = Math.round(balance / hours);
-    hourlyEl.textContent = `${hourlyRate >= 0 ? '+' : ''}¥${hourlyRate.toLocaleString()}`;
+    hourlyEl.textContent = `${hourlyRate >= 0 ? '+' : ''}${hourlyRate.toLocaleString()}枚`;
     hourlyEl.className = `hourly-value ${hourlyRate >= 0 ? 'profit' : 'loss'}`;
     hourlyDiv.style.display = 'block';
   }
@@ -1126,9 +1126,9 @@ async function generateBlog() {
 
 【基本情報】
 - 機種名: ${machine || '（画像から判断してください）'}
-- 投資: ${inAmount.toLocaleString()}円
-- 回収: ${outAmount.toLocaleString()}円
-- 収支: ${balanceText}円
+- 投資: ${inAmount.toLocaleString()}枚
+- 回収: ${outAmount.toLocaleString()}枚
+- 差枚: ${balanceText}枚
 
 【メモ】
 ${memo || 'なし'}
@@ -1263,11 +1263,11 @@ async function showMachineStats(machineName) {
     </div>
     <div class="machine-stat-item">
       <span class="machine-stat-label">累計:</span>
-      <span class="machine-stat-value ${balanceClass}">${data.totalBalance >= 0 ? '+' : ''}${data.totalBalance.toLocaleString()}円</span>
+      <span class="machine-stat-value ${balanceClass}">${data.totalBalance >= 0 ? '+' : ''}${data.totalBalance.toLocaleString()}枚</span>
     </div>
     <div class="machine-stat-item">
       <span class="machine-stat-label">平均:</span>
-      <span class="machine-stat-value ${avgBalance >= 0 ? 'profit' : 'loss'}">${avgBalance >= 0 ? '+' : ''}${avgBalance.toLocaleString()}円</span>
+      <span class="machine-stat-value ${avgBalance >= 0 ? 'profit' : 'loss'}">${avgBalance >= 0 ? '+' : ''}${avgBalance.toLocaleString()}枚</span>
     </div>
   `;
   document.getElementById('machine-stats').style.display = 'flex';
@@ -1345,7 +1345,7 @@ async function generateHikoichiAnalysis() {
     let statsText = '';
     if (machineData) {
       const winRate = Math.round((machineData.wins / machineData.count) * 100);
-      statsText = `\n【この機種の過去データ】\n- 実戦回数: ${machineData.count}回\n- 勝率: ${winRate}%\n- 累計収支: ${machineData.totalBalance.toLocaleString()}円`;
+      statsText = `\n【この機種の過去データ】\n- 実戦回数: ${machineData.count}回\n- 勝率: ${winRate}%\n- 累計差枚: ${machineData.totalBalance.toLocaleString()}枚`;
     }
 
     const memoSection = memo ? `\n【打ち手のメモ・感想】\n${memo}\n※このメモの内容も必ず分析に含めて、コメントしてください！` : '';
@@ -1375,9 +1375,9 @@ async function generateHikoichiAnalysis() {
 
 【今日の実戦データ】
 - 機種: ${machineName || '不明'}
-- 投資: ${inAmount.toLocaleString()}円
-- 回収: ${outAmount.toLocaleString()}円
-- 収支: ${balanceText}円${statsText}${memoSection}
+- 投資: ${inAmount.toLocaleString()}枚
+- 回収: ${outAmount.toLocaleString()}枚
+- 差枚: ${balanceText}枚${statsText}${memoSection}
 
 必ず以下のJSON形式で返してください:
 \`\`\`json
