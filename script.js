@@ -468,13 +468,11 @@ async function loadMonthlyData() {
     return b.day - a.day;
   });
 
-  let totalYenBalance = 0;
+  let totalBalance = 0;
 
   entries.forEach(entry => {
     const balance = (entry.out || 0) - (entry.in || 0);
-    const rate = entry.rate || 0;
-    const yenBalance = Math.round(balance * rate);
-    totalYenBalance += yenBalance;
+    totalBalance += balance;
 
     const item = document.createElement('div');
     item.className = 'daily-item';
@@ -484,10 +482,7 @@ async function loadMonthlyData() {
       ? entry.images[0]
       : 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Crect fill="%230f3460" width="100" height="100"/%3E%3Ctext x="50" y="55" text-anchor="middle" fill="%23a0a0a0" font-size="12"%3E-%3C/text%3E%3C/svg%3E';
 
-    // レートがある場合は円表示、なければ枚表示
-    const displayBalance = rate > 0
-      ? `${yenBalance >= 0 ? '+' : ''}¥${yenBalance.toLocaleString()}`
-      : `${balance >= 0 ? '+' : ''}${balance.toLocaleString()}枚`;
+    const displayBalance = `${balance >= 0 ? '+' : ''}${balance.toLocaleString()}枚`;
 
     item.innerHTML = `
       <img class="daily-thumb" src="${thumbSrc}" alt="">
@@ -495,7 +490,7 @@ async function loadMonthlyData() {
         <p class="daily-date">${entry.month}/${entry.day}</p>
         <p class="daily-machine">${entry.machine || '未入力'}</p>
       </div>
-      <span class="daily-balance ${yenBalance >= 0 ? 'profit' : 'loss'}">
+      <span class="daily-balance ${balance >= 0 ? 'profit' : 'loss'}">
         ${displayBalance}
       </span>
     `;
@@ -506,8 +501,8 @@ async function loadMonthlyData() {
   // サマリー更新
   document.getElementById('total-days').textContent = `${entries.length}日`;
   const totalEl = document.getElementById('monthly-total');
-  totalEl.textContent = `${totalYenBalance >= 0 ? '+' : ''}¥${totalYenBalance.toLocaleString()}`;
-  totalEl.className = `summary-value ${totalYenBalance >= 0 ? 'profit' : 'loss'}`;
+  totalEl.textContent = `${totalBalance >= 0 ? '+' : ''}${totalBalance.toLocaleString()}枚`;
+  totalEl.className = `summary-value ${totalBalance >= 0 ? 'profit' : 'loss'}`;
 
   // カレンダーも更新
   renderCalendar(entries);
@@ -604,7 +599,6 @@ async function loadEntry(id) {
   document.getElementById('btn-clear-machine').style.display = entry.machine ? 'flex' : 'none';
   document.getElementById('input-in').value = entry.in || '';
   document.getElementById('input-out').value = entry.out || '';
-  document.getElementById('input-rate').value = entry.rate || '';
   // 稼働時間（時間と分に分解）
   const hoursUnknown = entry.hoursUnknown || false;
   document.getElementById('hours-unknown').checked = hoursUnknown;
@@ -657,7 +651,6 @@ function clearEntryForm() {
   document.getElementById('btn-clear-machine').style.display = 'none';
   document.getElementById('input-in').value = '';
   document.getElementById('input-out').value = '';
-  document.getElementById('input-rate').value = '';
   document.getElementById('input-hours').value = '1';
   document.getElementById('input-minutes').value = '0';
   document.getElementById('hours-unknown').checked = false;
@@ -679,52 +672,11 @@ function updateBalance() {
   const inValue = parseInt(document.getElementById('input-in').value) || 0;
   const outValue = parseInt(document.getElementById('input-out').value) || 0;
   const balance = outValue - inValue;
-  const rate = parseFloat(document.getElementById('input-rate').value) || 0;
 
   // 差枚表示
   const balanceEl = document.getElementById('balance-value');
   balanceEl.textContent = `${balance >= 0 ? '+' : ''}${balance.toLocaleString()}枚`;
   balanceEl.className = `balance-value ${balance >= 0 ? 'profit' : 'loss'}`;
-
-  // 収支（円）表示
-  const yenBalance = Math.round(balance * rate);
-  const yenEl = document.getElementById('balance-yen-value');
-  yenEl.textContent = `${yenBalance >= 0 ? '+' : ''}¥${yenBalance.toLocaleString()}`;
-  yenEl.className = `balance-value ${yenBalance >= 0 ? 'profit' : 'loss'}`;
-
-  // 時給計算（円ベース）
-  const hoursUnknown = document.getElementById('hours-unknown').checked;
-  const hourlyDiv = document.getElementById('balance-hourly');
-  const hourlyEl = document.getElementById('hourly-value');
-
-  if (hoursUnknown || rate === 0) {
-    hourlyDiv.style.display = 'none';
-  } else {
-    const hours = (parseInt(document.getElementById('input-hours').value) || 1) + (parseInt(document.getElementById('input-minutes').value) || 0) / 60;
-    const hourlyRate = Math.round(yenBalance / hours);
-    hourlyEl.textContent = `${hourlyRate >= 0 ? '+' : ''}¥${hourlyRate.toLocaleString()}`;
-    hourlyEl.className = `hourly-value ${hourlyRate >= 0 ? 'profit' : 'loss'}`;
-    hourlyDiv.style.display = 'block';
-  }
-}
-
-// レート候補を更新
-function updateRateDatalist() {
-  const rates = JSON.parse(localStorage.getItem('saved_rates') || '[]');
-  const datalist = document.getElementById('rate-list');
-  datalist.innerHTML = rates.map(r => `<option value="${r}">`).join('');
-}
-
-// レートを保存
-function saveRate(rate) {
-  if (!rate) return;
-  let rates = JSON.parse(localStorage.getItem('saved_rates') || '[]');
-  if (!rates.includes(rate)) {
-    rates.push(rate);
-    rates.sort((a, b) => a - b);
-    localStorage.setItem('saved_rates', JSON.stringify(rates));
-    updateRateDatalist();
-  }
 }
 
 // ========== 画像処理（ドロップゾーン） ==========
@@ -1089,13 +1041,6 @@ async function saveCurrentEntry() {
     return;
   }
 
-  const rate = parseFloat(document.getElementById('input-rate').value) || 0;
-
-  // 新しいレートを候補に保存
-  if (rate > 0) {
-    saveRate(rate);
-  }
-
   const entry = {
     year: parseInt(match[1]),
     month: parseInt(match[2]),
@@ -1105,7 +1050,6 @@ async function saveCurrentEntry() {
     machine: document.getElementById('machine-name').value,
     in: parseInt(document.getElementById('input-in').value) || 0,
     out: parseInt(document.getElementById('input-out').value) || 0,
-    rate: rate,
     hours: document.getElementById('hours-unknown').checked ? null : (parseInt(document.getElementById('input-hours').value) || 1) + (parseInt(document.getElementById('input-minutes').value) || 0) / 60,
     hoursUnknown: document.getElementById('hours-unknown').checked,
     memo: document.getElementById('memo').value,
@@ -1669,14 +1613,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   // IN/OUT入力時の収支計算
   document.getElementById('input-in').addEventListener('input', updateBalance);
   document.getElementById('input-out').addEventListener('input', updateBalance);
-  document.getElementById('input-rate').addEventListener('input', updateBalance);
-
-  // レート候補を初期化
-  updateRateDatalist();
-
-  // 稼働時間変更時も時給を更新
-  document.getElementById('input-hours').addEventListener('change', updateBalance);
-  document.getElementById('input-minutes').addEventListener('change', updateBalance);
 
   // 稼働時間不明チェックボックス
   document.getElementById('hours-unknown').addEventListener('change', (e) => {
