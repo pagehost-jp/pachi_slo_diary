@@ -52,10 +52,20 @@ async function handleAuthStateChanged(user) {
       const userDoc = await firestoreDb.collection('users').doc(user.uid).get();
       if (userDoc.exists) {
         const userData = userDoc.data();
-        if (userData.apiKey && !geminiApiKey) {
+        if (userData.apiKey) {
           geminiApiKey = userData.apiKey;
           localStorage.setItem('gemini_api_key', userData.apiKey);
-          document.getElementById('api-key-input').value = userData.apiKey;
+          const apiKeyInput = document.getElementById('api-key-input');
+          if (apiKeyInput) apiKeyInput.value = userData.apiKey;
+          console.log('APIキーをクラウドから取得しました');
+        }
+      } else {
+        // クラウドにデータがない場合、ローカルのAPIキーをアップロード
+        if (geminiApiKey) {
+          await firestoreDb.collection('users').doc(user.uid).set({
+            apiKey: geminiApiKey
+          }, { merge: true });
+          console.log('APIキーをクラウドに保存しました');
         }
       }
     } catch (e) {
