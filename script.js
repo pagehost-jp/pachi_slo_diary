@@ -374,6 +374,7 @@ function showEntryView(entryId = null) {
   document.getElementById('monthly-view').style.display = 'none';
   document.getElementById('entry-view').style.display = 'block';
   document.getElementById('btn-back-header').style.display = 'block';
+  window.scrollTo(0, 0);
 
   currentEntryId = entryId;
   uploadedImages = [];
