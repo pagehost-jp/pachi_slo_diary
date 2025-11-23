@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=6">
+  <link rel="stylesheet" href="style.css?v=7">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-192.png">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -130,6 +130,10 @@
             <button class="chart-tab" data-chart="cumulative">累計</button>
             <button class="chart-tab" data-chart="machine">機種別</button>
             <button class="chart-tab" data-chart="hall">店舗別</button>
+          </div>
+          <div class="chart-period-toggle" id="chart-period-toggle" style="display: none;">
+            <button class="period-btn active" data-period="year">年間</button>
+            <button class="period-btn" data-period="month">今月</button>
           </div>
           <div class="chart-container">
             <canvas id="balance-chart"></canvas>
@@ -346,6 +350,6 @@
 
   </div>
 
-  <script src="script.js?v=11"></script>
+  <script src="script.js?v=12"></script>
 </body>
 </html>

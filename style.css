@@ -550,6 +550,30 @@ body {
   color: white;
 }
 
+.chart-period-toggle {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+  justify-content: center;
+}
+
+.period-btn {
+  padding: 6px 16px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  color: var(--text-sub);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.period-btn.active {
+  background: #5b7cfa;
+  border-color: #5b7cfa;
+  color: white;
+}
+
 .chart-container {
   background: var(--bg-dark);
   border-radius: 12px;

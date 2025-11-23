@@ -1382,8 +1382,15 @@ async function openTodaysEntry() {
 }
 
 // ========== 機種統計 ==========
-async function getMachineStats() {
-  const entries = await getAllEntries();
+async function getMachineStats(year = null, month = null) {
+  let entries;
+  if (year && month) {
+    entries = await getEntriesByMonth(year, month);
+  } else if (year) {
+    entries = await getEntriesByYear(year);
+  } else {
+    entries = await getAllEntries();
+  }
   const stats = {};
 
   entries.forEach(entry => {
@@ -1467,8 +1474,15 @@ async function showMachineStats(machineName) {
 }
 
 // ========== ホール統計 ==========
-async function getHallStats() {
-  const entries = await getAllEntries();
+async function getHallStats(year = null, month = null) {
+  let entries;
+  if (year && month) {
+    entries = await getEntriesByMonth(year, month);
+  } else if (year) {
+    entries = await getEntriesByYear(year);
+  } else {
+    entries = await getAllEntries();
+  }
   const stats = {};
 
   entries.forEach(entry => {
@@ -1619,24 +1633,39 @@ async function generateHikoichiAnalysis() {
 // ========== グラフ表示 ==========
 let balanceChart = null;
 
-async function showChart(chartType = 'monthly') {
+let currentChartType = 'monthly';
+let currentChartPeriod = 'year';
+
+async function showChart(chartType = 'monthly', period = null) {
   document.getElementById('chart-modal').style.display = 'flex';
+  currentChartType = chartType;
 
   const ctx = document.getElementById('balance-chart').getContext('2d');
+  const periodToggle = document.getElementById('chart-period-toggle');
 
   if (balanceChart) {
     balanceChart.destroy();
   }
 
+  // 機種別・店舗別の場合は期間切り替えを表示
+  if (chartType === 'machine' || chartType === 'hall') {
+    periodToggle.style.display = 'flex';
+    // 「今月」ボタンのラベルを更新
+    periodToggle.querySelector('[data-period="month"]').textContent = `${currentMonth}月`;
+    if (period) currentChartPeriod = period;
+  } else {
+    periodToggle.style.display = 'none';
+  }
+
   // 機種別グラフ
   if (chartType === 'machine') {
-    await showMachineChart(ctx);
+    await showMachineChart(ctx, currentChartPeriod);
     return;
   }
 
   // 店舗別グラフ
   if (chartType === 'hall') {
-    await showHallChart(ctx);
+    await showHallChart(ctx, currentChartPeriod);
     return;
   }
 
@@ -1714,8 +1743,16 @@ async function showChart(chartType = 'monthly') {
 }
 
 // 機種別グラフ表示
-async function showMachineChart(ctx) {
-  const stats = await getMachineStats();
+async function showMachineChart(ctx, period = 'year') {
+  let stats;
+  let periodLabel;
+  if (period === 'month') {
+    stats = await getMachineStats(currentYear, currentMonth);
+    periodLabel = `${currentMonth}月`;
+  } else {
+    stats = await getMachineStats(currentYear);
+    periodLabel = `${currentYear}年`;
+  }
 
   // 累計差枚でソート（上位10機種）
   const sorted = Object.entries(stats)
@@ -1820,8 +1857,16 @@ async function showMachineChart(ctx) {
 }
 
 // 店舗別グラフ表示
-async function showHallChart(ctx) {
-  const stats = await getHallStats();
+async function showHallChart(ctx, period = 'year') {
+  let stats;
+  let periodLabel;
+  if (period === 'month') {
+    stats = await getHallStats(currentYear, currentMonth);
+    periodLabel = `${currentMonth}月`;
+  } else {
+    stats = await getHallStats(currentYear);
+    periodLabel = `${currentYear}年`;
+  }
 
   // 来店回数でソート（上位10店舗）
   const sorted = Object.entries(stats)
@@ -2015,6 +2060,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
       showChart(tab.dataset.chart);
+    });
+  });
+  // 期間切り替え（年間/今月）
+  document.querySelectorAll('.period-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentChartPeriod = btn.dataset.period;
+      showChart(currentChartType, currentChartPeriod);
     });
   });
 
