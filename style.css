@@ -954,17 +954,17 @@ body {
 /* ========== Main Drop Zone ========== */
 .main-drop-zone {
   background: #f0f4f8;
-  border: 3px dashed #a0b0c0;
-  border-radius: 16px;
-  padding: 40px 20px;
+  border: 2px dashed #a0b0c0;
+  border-radius: 12px;
+  padding: 16px 12px;
   text-align: center;
   cursor: pointer;
   transition: all 0.2s;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .main-drop-zone:hover {
@@ -978,12 +978,12 @@ body {
 }
 
 .camera-icon {
-  font-size: 2.5rem;
+  font-size: 1.5rem;
 }
 
 .drop-text {
   color: #607080;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
 }
 
 /* ========== Uploaded Thumbnails ========== */
