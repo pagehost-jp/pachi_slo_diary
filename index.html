@@ -70,7 +70,10 @@
 
     <!-- ========== 月別一覧画面 ========== -->
     <section id="monthly-view" class="section">
-      <h2 class="page-title">記録一覧</h2>
+      <div class="page-title-row">
+        <h2 class="page-title">記録一覧</h2>
+        <button class="btn btn-primary btn-add-top" id="btn-add-entry">+ 収支を入力</button>
+      </div>
 
       <!-- 年度選択バー -->
       <div class="year-selector">
@@ -147,11 +150,6 @@
         <!-- JSで動的に追加 -->
         <p class="empty-message" id="empty-message">この月のデータはありません</p>
       </div>
-
-      <!-- 新規追加ボタン -->
-      <button class="btn btn-primary btn-large btn-add" id="btn-add-entry">
-        + 今日の収支を入力
-      </button>
     </section>
 
     <!-- ========== 日別入力/詳細画面 ========== -->
