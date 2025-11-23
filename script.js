@@ -234,7 +234,9 @@ async function deleteEntryFromCloud(entry) {
 
 // APIキー管理
 let geminiApiKey = localStorage.getItem('gemini_api_key') || '';
-let mapsApiKey = localStorage.getItem('maps_api_key') || '';
+// Google Maps APIキー（埋め込み）- リファラー制限済み
+const MAPS_API_KEY_DEFAULT = 'AIzaSyAgjCeqZyXRs_X8UfA3rA4z7kvNkfg5duU';
+let mapsApiKey = localStorage.getItem('maps_api_key') || MAPS_API_KEY_DEFAULT;
 let placesService = null;
 let mapsLoaded = false;
 
