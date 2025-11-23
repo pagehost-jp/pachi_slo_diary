@@ -48,7 +48,7 @@ body {
   margin-bottom: 16px;
   position: sticky;
   top: 0;
-  background: var(--bg-main);
+  background: #1a1a2e;
   z-index: 100;
 }
 
