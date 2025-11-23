@@ -899,43 +899,27 @@ async function performOcr() {
     }
 
     const prompt = `この画像はパチスロの実戦データ（Qマイスロなど）のスクリーンショットです。
-ディスクアップ2 または ディスクアップウルトラリミックス（ディスク3）のデータを読み取ってください。
+画像に表示されているデータをすべて読み取ってください。
 
-【重要】複数枚の画像がある場合、同じデータが重複している可能性があります。
-重複している場合は無視して、ユニークなデータのみを読み取ってください。
+【重要】
+- 機種は自動判別してください（ディスクアップ2、ウルトラリミックス、その他なんでもOK）
+- 複数枚の画像がある場合、重複データは1つにまとめてください
+- 画像に表示されている項目をすべて読み取ってください
 
-読み取るデータ:
-【基本情報】
-- game_count: ゲーム数（数値のみ、例: "2542"）
-- dance_time_games: DANCE TIMEゲーム数（数値のみ、例: "386"）
-- dj_zone_games: DJ ZONEゲーム数（数値のみ、例: "844"）
+【出力形式】
+以下のJSON形式で返してください:
+{
+  "machine_name": "機種名（画像から判別）",
+  "items": [
+    {"label": "項目名", "value": "値", "category": "カテゴリ名"},
+    {"label": "項目名", "value": "値", "category": "カテゴリ名"}
+  ]
+}
 
-【ボーナス情報】
-- total_bb_count: 総BB回数（異色含む）（数値のみ、例: "14"）
-- total_bb_probability: 総BB確率（異色含む）（例: "1/181.58"）
-- rb_count: RB回数（数値のみ、例: "8"）
-- rb_probability: RB確率（例: "1/317.75"）
-- normal_bb_count: NORMAL-BB回数（数値のみ、例: "6"）
-- hyper_bb_count: HYPER-BB回数（数値のみ、例: "8"）
-- double_up_bb_count: DOUBLE-UP-BB回数（NORMAL-BB・HYPER-BB合計）（数値のみ、例: "2"）
-- normal_bb_dt_entry: NORMAL-BB後DT突入回数（数値のみ、例: "3"）
+カテゴリ例: "基本情報", "ボーナス", "小役", "技術介入", "その他" など
+項目名は画像に表示されているそのままの名前を使ってください。
 
-【技術介入】
-- skill_true_rate: 真・技術介入成功率（例: "100.0%"）
-- skill_extreme_rate: 極・技術介入成功率（例: "33.4%"）
-
-【小役確率】
-- at_common_10mai_count: AT中共通10枚回数（数値のみ、例: "22"）
-- at_common_10mai_probability: AT中共通10枚確率（例: "1/55.91"）
-- suika_count: スイカ回数（数値のみ、例: "48"）
-- suika_probability: スイカ確率（例: "1/52.96"）
-- cherry_count: チェリー回数（数値のみ、例: "70"）
-- cherry_probability: チェリー確率（例: "1/36.32"）
-
-【その他】
-- max_medals: 最大獲得枚数（数値のみ、例: "1662"）
-
-JSONのみを返してください。読み取れない項目はnullにしてください。`;
+JSONのみを返してください。`;
 
     const resultText = await callGeminiAPI(prompt, validImages);
 
@@ -972,85 +956,72 @@ function displayOcrResult(data) {
   const resultDiv = document.getElementById('ocr-result');
   const dataGrid = document.getElementById('ocr-data-grid');
 
-  // 読み取り可能な全項目（カテゴリ別）
-  const categories = {
-    '基本情報': {
-      game_count: 'ゲーム数',
-      dance_time_games: 'DT G数',
-      dj_zone_games: 'DJ ZONE G数'
-    },
-    'ボーナス': {
-      total_bb_count: '総BB回数',
-      total_bb_probability: '総BB確率',
-      rb_count: 'RB回数',
-      rb_probability: 'RB確率',
-      normal_bb_count: 'NORMAL-BB',
-      hyper_bb_count: 'HYPER-BB',
-      double_up_bb_count: 'DOUBLE-UP-BB',
-      normal_bb_dt_entry: 'NB後DT突入'
-    },
-    '技術介入': {
-      skill_true_rate: '真ビタ成功率',
-      skill_extreme_rate: '極ビタ成功率'
-    },
-    '小役': {
-      at_common_10mai_count: 'AT共10枚',
-      at_common_10mai_probability: 'AT共10枚確率',
-      suika_count: 'スイカ',
-      suika_probability: 'スイカ確率',
-      cherry_count: 'チェリー',
-      cherry_probability: 'チェリー確率'
-    },
-    'その他': {
-      max_medals: '最大獲得枚数'
-    }
-  };
-
   dataGrid.innerHTML = '';
 
-  let itemCount = 0;
+  // 新フォーマット（items配列）の場合
+  if (data.items && Array.isArray(data.items)) {
+    // 機種名があれば表示
+    if (data.machine_name) {
+      const machineHeader = document.createElement('div');
+      machineHeader.className = 'ocr-category-header';
+      machineHeader.textContent = `機種: ${data.machine_name}`;
+      dataGrid.appendChild(machineHeader);
 
-  for (const [categoryName, labels] of Object.entries(categories)) {
-    // このカテゴリにデータがあるかチェック
-    const hasData = Object.keys(labels).some(key => data[key] !== null && data[key] !== undefined);
-    if (!hasData) continue;
+      // 機種名を自動入力
+      const machineInput = document.getElementById('machine-name');
+      if (!machineInput.value) {
+        machineInput.value = data.machine_name;
+        document.getElementById('btn-clear-machine').style.display = 'flex';
+      }
+    }
 
-    // カテゴリヘッダー
-    const categoryHeader = document.createElement('div');
-    categoryHeader.className = 'ocr-category-header';
-    categoryHeader.textContent = categoryName;
-    dataGrid.appendChild(categoryHeader);
+    // カテゴリごとにグループ化
+    const grouped = {};
+    data.items.forEach(item => {
+      const cat = item.category || 'その他';
+      if (!grouped[cat]) grouped[cat] = [];
+      grouped[cat].push(item);
+    });
 
-    for (const [key, label] of Object.entries(labels)) {
-      if (data[key] !== null && data[key] !== undefined) {
+    // カテゴリごとに表示
+    for (const [categoryName, items] of Object.entries(grouped)) {
+      const categoryHeader = document.createElement('div');
+      categoryHeader.className = 'ocr-category-header';
+      categoryHeader.textContent = categoryName;
+      dataGrid.appendChild(categoryHeader);
+
+      items.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'ocr-data-item';
+        div.innerHTML = `
+          <span class="ocr-data-label">${item.label}</span>
+          <span class="ocr-data-value">${item.value}</span>
+        `;
+        dataGrid.appendChild(div);
+      });
+    }
+
+    if (data.items.length === 0) {
+      dataGrid.innerHTML = '<div class="ocr-error">データを読み取れませんでした</div>';
+    }
+  } else {
+    // 旧フォーマット（キー:値）の場合の互換性
+    let itemCount = 0;
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== null && value !== undefined) {
         const item = document.createElement('div');
         item.className = 'ocr-data-item';
-
-        // 値のフォーマット（回数には「回」、G数には「G」、枚数には「枚」を追加）
-        let displayValue = data[key];
-        if (key.endsWith('_count') || key === 'normal_bb_dt_entry') {
-          displayValue = `${data[key]}回`;
-        } else if (key.endsWith('_games')) {
-          displayValue = `${data[key]}G`;
-        } else if (key === 'game_count') {
-          displayValue = `${data[key]}G`;
-        } else if (key === 'max_medals') {
-          displayValue = `${data[key]}枚`;
-        }
-
         item.innerHTML = `
-          <span class="ocr-data-label">${label}</span>
-          <span class="ocr-data-value">${displayValue}</span>
+          <span class="ocr-data-label">${key}</span>
+          <span class="ocr-data-value">${value}</span>
         `;
         dataGrid.appendChild(item);
         itemCount++;
       }
     }
-  }
-
-  // データがない場合もメッセージを表示
-  if (itemCount === 0) {
-    dataGrid.innerHTML = '<div class="ocr-error">データを読み取れませんでした</div>';
+    if (itemCount === 0) {
+      dataGrid.innerHTML = '<div class="ocr-error">データを読み取れませんでした</div>';
+    }
   }
 
   resultDiv.style.display = 'block';
