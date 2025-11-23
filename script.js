@@ -804,10 +804,18 @@ function renderThumbnails() {
     const thumbItem = document.createElement('div');
     thumbItem.className = 'thumb-item';
     thumbItem.innerHTML = `
-      <img src="${img}" alt="画像${index + 1}">
+      <img src="${img}" alt="画像${index + 1}" data-index="${index}">
       <button class="thumb-remove" data-index="${index}">×</button>
     `;
     container.appendChild(thumbItem);
+  });
+
+  // 画像タップで拡大表示
+  container.querySelectorAll('.thumb-item img').forEach(img => {
+    img.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showImageModal(img.src);
+    });
   });
 
   // 削除ボタンのイベント
@@ -817,6 +825,36 @@ function renderThumbnails() {
       const index = parseInt(btn.dataset.index);
       removeImage(index);
     });
+  });
+}
+
+// 画像拡大モーダル
+function showImageModal(src) {
+  // 既存のモーダルがあれば削除
+  const existing = document.getElementById('image-modal');
+  if (existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'image-modal';
+  modal.className = 'image-modal';
+  modal.innerHTML = `
+    <div class="image-modal-content">
+      <img src="${src}" alt="拡大画像">
+      <button class="image-modal-close">×</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  // 閉じるボタン
+  modal.querySelector('.image-modal-close').addEventListener('click', () => {
+    modal.remove();
+  });
+
+  // 背景クリックでも閉じる
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      modal.remove();
+    }
   });
 }
 
