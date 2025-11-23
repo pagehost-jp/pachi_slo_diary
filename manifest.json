@@ -1,7 +1,7 @@
 {
-  "name": "パチスロ収支ノート",
-  "short_name": "収支ノート",
-  "description": "パチスロ収支管理とGemini AIブログ生成",
+  "name": "Manex",
+  "short_name": "Manex",
+  "description": "Personal data management",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#1a1a2e",
