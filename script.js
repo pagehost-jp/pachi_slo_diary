@@ -461,8 +461,9 @@ async function loadMonthlyData() {
 
   emptyMessage.style.display = 'none';
 
-  // 日付でソート（降順）
+  // 日付でソート（降順：新しい日付が上）
   entries.sort((a, b) => {
+    if (a.year !== b.year) return b.year - a.year;
     if (a.month !== b.month) return b.month - a.month;
     return b.day - a.day;
   });
