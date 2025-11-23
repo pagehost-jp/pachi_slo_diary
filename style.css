@@ -40,14 +40,12 @@ body {
 
 /* ========== Header ========== */
 .header {
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 16px 0;
   border-bottom: 1px solid var(--border);
   margin-bottom: 16px;
-}
-
-.header {
-  position: relative;
 }
 
 .header h1 {
@@ -61,13 +59,23 @@ body {
     0 0 20px #d4a030,
     0 0 40px rgba(240, 192, 64, 0.6);
   font-family: 'DotGothic16', sans-serif;
+  flex: 1;
+  text-align: center;
+}
+
+.btn-back-header {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .btn-settings {
-  position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
   background: var(--bg-input);
   border: 1px solid var(--border);
   color: var(--text-sub);
@@ -84,10 +92,6 @@ body {
 
 /* ========== User Button ========== */
 .btn-user {
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
   background: var(--bg-input);
   border: 1px solid var(--border);
   color: var(--text-sub);

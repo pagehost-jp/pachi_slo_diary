@@ -364,6 +364,7 @@ async function getAllEntries() {
 function showMonthlyView() {
   document.getElementById('monthly-view').style.display = 'block';
   document.getElementById('entry-view').style.display = 'none';
+  document.getElementById('btn-back-header').style.display = 'none';
   updateYearDisplay();
   updateMonthButtons();
   loadMonthlyData();
@@ -372,6 +373,7 @@ function showMonthlyView() {
 function showEntryView(entryId = null) {
   document.getElementById('monthly-view').style.display = 'none';
   document.getElementById('entry-view').style.display = 'block';
+  document.getElementById('btn-back-header').style.display = 'block';
 
   currentEntryId = entryId;
   uploadedImages = [];
@@ -1579,7 +1581,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // エントリー操作
   document.getElementById('btn-add-entry').addEventListener('click', () => showEntryView());
-  document.getElementById('btn-back').addEventListener('click', showMonthlyView);
+  document.getElementById('btn-back-header').addEventListener('click', showMonthlyView);
   document.getElementById('btn-save').addEventListener('click', saveCurrentEntry);
   document.getElementById('btn-delete').addEventListener('click', deleteCurrentEntry);
   document.getElementById('btn-reset').addEventListener('click', () => {

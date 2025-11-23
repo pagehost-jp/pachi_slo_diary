@@ -23,12 +23,15 @@
 <body>
   <div class="container">
     <header class="header">
-      <button class="btn-user" id="btn-user">
-        <span class="user-icon">👤</span>
-        <span class="user-name" id="user-name">ログイン</span>
-      </button>
+      <button class="btn btn-icon btn-back-header" id="btn-back-header" style="display: none;">&lt;</button>
       <h1 id="logo-title" style="cursor: pointer;">収支ノート</h1>
-      <button class="btn-settings" id="btn-settings">設定</button>
+      <div class="header-right">
+        <button class="btn-user" id="btn-user">
+          <span class="user-icon">👤</span>
+          <span class="user-name" id="user-name">ログイン</span>
+        </button>
+        <button class="btn-settings" id="btn-settings">設定</button>
+      </div>
     </header>
 
     <!-- 設定モーダル -->
@@ -154,7 +157,6 @@
     <!-- ========== 日別入力/詳細画面 ========== -->
     <section id="entry-view" class="section" style="display: none;">
       <div class="entry-header">
-        <button class="btn btn-icon" id="btn-back">&lt;</button>
         <div class="date-picker-wrapper">
           <span class="date-icon">📅</span>
           <h2 class="entry-date" id="entry-date">2025年11月21日</h2>
