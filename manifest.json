@@ -1,6 +1,6 @@
 {
-  "name": "ManeX",
-  "short_name": "ManeX",
+  "name": "Maxima",
+  "short_name": "Maxima",
   "description": "Personal data management",
   "start_url": "./index.html",
   "display": "standalone",
