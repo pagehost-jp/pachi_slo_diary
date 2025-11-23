@@ -762,10 +762,27 @@ body {
   text-align: center;
   position: relative;
   cursor: pointer;
+  background: var(--bg-input);
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.date-picker-wrapper:hover {
+  border-color: var(--accent);
+}
+
+.date-icon {
+  font-size: 1.2rem;
 }
 
 .entry-date {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 600;
   margin: 0;
 }
@@ -778,13 +795,6 @@ body {
   top: 0;
   left: 0;
   cursor: pointer;
-}
-
-.date-edit-hint {
-  display: block;
-  font-size: 0.7rem;
-  color: var(--text-sub);
-  margin-top: 2px;
 }
 
 /* ========== Form Elements ========== */
