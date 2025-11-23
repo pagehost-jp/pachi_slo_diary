@@ -1233,34 +1233,38 @@ body {
 .balance-display {
   background: var(--bg-dark);
   border-radius: 12px;
-  padding: 20px;
+  padding: 12px 8px;
   display: flex;
-  justify-content: center;
-  gap: 40px;
-  margin-bottom: 20px;
+  justify-content: space-around;
+  gap: 8px;
+  margin-bottom: 16px;
 }
 
 .balance-main, .balance-yen, .balance-hourly {
   text-align: center;
+  flex: 1;
+  min-width: 0;
 }
 
 .balance-label, .hourly-label {
   display: block;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   color: var(--text-sub);
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .balance-value {
-  font-size: 2rem;
+  font-size: 1.1rem;
   font-weight: 700;
   color: var(--text-main);
+  white-space: nowrap;
 }
 
 .hourly-value {
-  font-size: 1.5rem;
+  font-size: 1.1rem;
   font-weight: 700;
   color: var(--text-main);
+  white-space: nowrap;
 }
 
 .balance-value.profit, .hourly-value.profit {
