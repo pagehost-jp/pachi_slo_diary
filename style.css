@@ -881,6 +881,99 @@ body {
   cursor: pointer;
 }
 
+.input-with-location {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.input-with-location .input-with-clear {
+  flex: 1;
+}
+
+.btn-location {
+  width: 50px;
+  background: linear-gradient(135deg, #4285f4, #34a853);
+  border: none;
+  border-radius: 10px;
+  font-size: 1.3rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-location:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 15px rgba(66, 133, 244, 0.4);
+}
+
+.btn-location:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-location.loading {
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ホール選択リスト */
+.hall-list {
+  max-height: 300px;
+  overflow-y: auto;
+  margin: 16px 0;
+}
+
+.hall-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  background: var(--bg-input);
+  border-radius: 10px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.hall-item:hover {
+  background: var(--bg-dark);
+  border: 1px solid var(--accent);
+}
+
+.hall-name {
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.hall-distance {
+  font-size: 0.85rem;
+  color: var(--success);
+}
+
+.hall-search-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px;
+  color: var(--text-sub);
+}
+
+.hall-search-status.hidden {
+  display: none;
+}
+
+.hall-error {
+  text-align: center;
+  padding: 20px;
+  color: var(--loss);
+}
+
 .input-with-clear {
   position: relative;
   display: flex;
