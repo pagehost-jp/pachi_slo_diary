@@ -1711,11 +1711,30 @@ function saveSettings() {
   if (apiKey) {
     geminiApiKey = apiKey;
     localStorage.setItem('gemini_api_key', apiKey);
-    alert('APIキーを保存しました');
-    closeSettings();
+    showToast('APIキーを保存しました');
+    document.getElementById('settings-modal').style.display = 'none';
   } else {
-    alert('APIキーを入力してください');
+    showToast('APIキーを入力してください', true);
   }
+}
+
+// トースト通知（自動で消える）
+function showToast(message, isError = false) {
+  // 既存のトーストを削除
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+
+  const toast = document.createElement('div');
+  toast.className = 'toast' + (isError ? ' toast-error' : '');
+  toast.textContent = message;
+  document.body.appendChild(toast);
+
+  // アニメーション
+  setTimeout(() => toast.classList.add('show'), 10);
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 300);
+  }, 2000);
 }
 
 function toggleKeyVisibility() {

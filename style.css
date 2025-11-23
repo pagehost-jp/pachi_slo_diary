@@ -1131,6 +1131,34 @@ body {
   font-size: 0.9rem;
 }
 
+/* ========== Toast通知 ========== */
+.toast {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--profit);
+  color: var(--bg-dark);
+  padding: 12px 24px;
+  border-radius: 25px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  opacity: 0;
+  transition: all 0.3s ease;
+  z-index: 9999;
+  box-shadow: 0 4px 15px rgba(0, 255, 136, 0.4);
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.toast.toast-error {
+  background: var(--loss);
+  box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4);
+}
+
 .ocr-success {
   color: var(--profit);
   text-align: center;
