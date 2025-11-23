@@ -16,6 +16,7 @@ const firebaseConfig = {
 let firebaseApp = null;
 let auth = null;
 let firestoreDb = null;
+let firebaseStorage = null;
 let currentUser = null;
 let unsubscribeSync = null; // リアルタイム同期のリスナー解除用
 
@@ -28,6 +29,7 @@ async function initFirebase() {
     firebaseApp = firebase.initializeApp(firebaseConfig);
     auth = firebase.auth();
     firestoreDb = firebase.firestore();
+    firebaseStorage = firebase.storage();
 
     // 認証の永続性をLOCALに設定（PWAでも維持される）
     await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
@@ -38,6 +40,78 @@ async function initFirebase() {
   } catch (error) {
     console.error('Firebase初期化エラー:', error);
     return false;
+  }
+}
+
+// ========== Firebase Storage 画像管理 ==========
+
+// Base64画像をStorageにアップロード
+async function uploadImageToStorage(entryId, imageIndex, base64Data) {
+  if (!currentUser || !firebaseStorage) return null;
+
+  try {
+    // Base64からBlobに変換
+    const base64Response = await fetch(base64Data);
+    const blob = await base64Response.blob();
+
+    // ストレージパス: users/{userId}/images/{entryId}/{index}.jpg
+    const storagePath = `users/${currentUser.uid}/images/${entryId}/${imageIndex}.jpg`;
+    const storageRef = firebaseStorage.ref(storagePath);
+
+    // アップロード
+    await storageRef.put(blob);
+
+    // ダウンロードURLを取得
+    const downloadUrl = await storageRef.getDownloadURL();
+    return downloadUrl;
+  } catch (error) {
+    // 容量オーバーエラーをチェック
+    if (error.code === 'storage/quota-exceeded') {
+      showToast('無料枠を使い切りました。古い画像を削除するか、プランをアップグレードしてください。', true);
+    } else {
+      console.error('画像アップロードエラー:', error);
+    }
+    return null;
+  }
+}
+
+// エントリーの全画像をStorageにアップロードし、URLリストを返す
+async function uploadEntryImages(entryId, images) {
+  if (!images || images.length === 0) return [];
+
+  const imageUrls = [];
+  for (let i = 0; i < images.length; i++) {
+    const url = await uploadImageToStorage(entryId, i, images[i]);
+    if (url) {
+      imageUrls.push(url);
+    }
+  }
+  return imageUrls;
+}
+
+// StorageのURLから画像をダウンロード（URLをそのまま使用）
+async function downloadEntryImages(imageUrls) {
+  if (!imageUrls || imageUrls.length === 0) return [];
+  // URLはそのまま使える（img srcに設定可能）
+  return imageUrls;
+}
+
+// エントリーの画像をStorageから削除
+async function deleteEntryImagesFromStorage(entryId) {
+  if (!currentUser || !firebaseStorage) return;
+
+  try {
+    const folderRef = firebaseStorage.ref(`users/${currentUser.uid}/images/${entryId}`);
+    const listResult = await folderRef.listAll();
+
+    for (const itemRef of listResult.items) {
+      await itemRef.delete();
+    }
+  } catch (error) {
+    // フォルダが存在しない場合は無視
+    if (error.code !== 'storage/object-not-found') {
+      console.error('画像削除エラー:', error);
+    }
   }
 }
 
@@ -97,30 +171,35 @@ function startRealtimeSync() {
     snapshot.docChanges().forEach(async (change) => {
       if (change.type === 'added' || change.type === 'modified') {
         const cloudEntry = change.doc.data();
-        cloudEntry.cloudId = change.doc.id;
+        const docId = change.doc.id;
 
-        // ローカルに同じ日付のエントリーがあるかチェック
-        const localEntries = await getEntriesByMonth(cloudEntry.year, cloudEntry.month);
-        const existingEntry = localEntries.find(e => e.day === cloudEntry.day);
+        // imageUrlsがあればimagesとして設定（URLをそのまま使える）
+        if (cloudEntry.imageUrls && cloudEntry.imageUrls.length > 0) {
+          cloudEntry.images = cloudEntry.imageUrls;
+        }
+        delete cloudEntry.imageUrls;
+
+        // ローカルに同じIDのエントリーがあるかチェック
+        const existingEntry = await getEntry(docId);
 
         if (existingEntry) {
           const cloudUpdated = cloudEntry.updatedAt?.toDate?.() || new Date(0);
           const localUpdated = existingEntry.updatedAt ? new Date(existingEntry.updatedAt) : new Date(0);
 
           if (cloudUpdated > localUpdated) {
-            cloudEntry.id = existingEntry.id;
+            cloudEntry.id = docId;
             await saveEntry(cloudEntry, false);
           }
         } else {
+          cloudEntry.id = docId;
           await saveEntry(cloudEntry, false);
         }
       } else if (change.type === 'removed') {
         // クラウドで削除された場合、ローカルも削除
-        const cloudEntry = change.doc.data();
-        const localEntries = await getEntriesByMonth(cloudEntry.year, cloudEntry.month);
-        const existingEntry = localEntries.find(e => e.day === cloudEntry.day);
+        const docId = change.doc.id;
+        const existingEntry = await getEntry(docId);
         if (existingEntry) {
-          await deleteEntry(existingEntry.id, false);
+          await deleteEntry(docId, false);
         }
       }
     });
@@ -253,33 +332,19 @@ async function syncFromCloud() {
   }
 }
 
-// クラウドへデータを同期
+// クラウドへデータを同期（画像含む）
 async function syncToCloud() {
   if (!currentUser || !firestoreDb) return;
 
   try {
     const entries = await getAllEntries();
-    const batch = firestoreDb.batch();
-    const userEntriesRef = firestoreDb
-      .collection('users')
-      .doc(currentUser.uid)
-      .collection('entries');
 
+    // 画像アップロードがあるため、一つずつ保存
     for (const entry of entries) {
-      // 画像はサイズが大きいのでクラウドに保存しない
-      const cloudEntry = { ...entry };
-      delete cloudEntry.images;
-      delete cloudEntry.id;
-      cloudEntry.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
-
-      // ドキュメントIDは日付ベースで一意に
-      const docId = `${entry.year}-${String(entry.month).padStart(2, '0')}-${String(entry.day).padStart(2, '0')}`;
-      const docRef = userEntriesRef.doc(docId);
-      batch.set(docRef, cloudEntry, { merge: true });
+      await saveEntryToCloud(entry);
     }
 
-    await batch.commit();
-    console.log('クラウドへの同期完了');
+    console.log('クラウドへの同期完了（画像含む）');
   } catch (error) {
     console.error('クラウドアップロードエラー:', error);
   }
@@ -291,11 +356,21 @@ async function saveEntryToCloud(entry) {
 
   try {
     const cloudEntry = { ...entry };
+    const localImages = cloudEntry.images || [];
     delete cloudEntry.images;
     delete cloudEntry.id;
     cloudEntry.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
 
-    const docId = `${entry.year}-${String(entry.month).padStart(2, '0')}-${String(entry.day).padStart(2, '0')}`;
+    // docIdはentry.idを使用（同じ日に複数エントリー対応）
+    const docId = entry.id;
+
+    // 画像をStorageにアップロード
+    if (localImages.length > 0 && firebaseStorage) {
+      const imageUrls = await uploadEntryImages(docId, localImages);
+      if (imageUrls.length > 0) {
+        cloudEntry.imageUrls = imageUrls;
+      }
+    }
 
     await firestoreDb
       .collection('users')
@@ -313,7 +388,10 @@ async function deleteEntryFromCloud(entry) {
   if (!currentUser || !firestoreDb) return;
 
   try {
-    const docId = `${entry.year}-${String(entry.month).padStart(2, '0')}-${String(entry.day).padStart(2, '0')}`;
+    const docId = entry.id;
+
+    // Storageの画像も削除
+    await deleteEntryImagesFromStorage(docId);
 
     await firestoreDb
       .collection('users')
