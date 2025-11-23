@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#e94560">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>APIキー取得方法 - パチスロ収支ノート</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .help-container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .help-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .help-header h1 {
+      font-size: 1.2rem;
+      margin: 0;
+    }
+
+    .btn-back-home {
+      background: var(--bg-secondary);
+      border: none;
+      color: var(--text-primary);
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .help-intro {
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+
+    .help-intro p {
+      margin: 0 0 10px 0;
+      line-height: 1.6;
+    }
+
+    .help-intro a {
+      color: var(--primary);
+      word-break: break-all;
+    }
+
+    .step {
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .step-number {
+      background: var(--primary);
+      color: white;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+
+    .step-title {
+      font-weight: bold;
+      font-size: 1rem;
+    }
+
+    .step-description {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+
+    .step-image {
+      width: 100%;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+
+    .step-note {
+      background: rgba(233, 69, 96, 0.1);
+      border-left: 3px solid var(--primary);
+      padding: 10px 12px;
+      margin-top: 12px;
+      font-size: 0.85rem;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .final-note {
+      background: linear-gradient(135deg, var(--primary) 0%, #ff6b6b 100%);
+      color: white;
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 24px;
+      text-align: center;
+    }
+
+    .final-note h3 {
+      margin: 0 0 8px 0;
+    }
+
+    .final-note p {
+      margin: 0;
+      font-size: 0.9rem;
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+  <div class="help-container">
+    <div class="help-header">
+      <a href="index.html" class="btn-back-home">&lt; 戻る</a>
+      <h1>Gemini APIキー取得方法</h1>
+    </div>
+
+    <div class="help-intro">
+      <p>このアプリでOCR（画像読み取り）やブログ生成機能を使うには、<strong>Gemini APIキー</strong>が必要です。</p>
+      <p>以下の手順で無料で取得できます。</p>
+      <p><a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio を開く</a></p>
+    </div>
+
+    <!-- STEP 1 -->
+    <div class="step">
+      <div class="step-header">
+        <span class="step-number">1</span>
+        <span class="step-title">「APIキーを作成」をクリック</span>
+      </div>
+      <p class="step-description">
+        Google AI Studioにログインしたら、右上の「APIキーを作成」ボタンをクリックします。
+      </p>
+      <img src="help-1.jpg" alt="APIキーを作成ボタン" class="step-image">
+    </div>
+
+    <!-- STEP 2 -->
+    <div class="step">
+      <div class="step-header">
+        <span class="step-number">2</span>
+        <span class="step-title">プロジェクトを作成</span>
+      </div>
+      <p class="step-description">
+        キー名を入力し（例：スロット）、「プロジェクトを作成」を選択します。
+      </p>
+      <img src="help-2.jpg" alt="プロジェクトを作成" class="step-image">
+    </div>
+
+    <!-- STEP 3 -->
+    <div class="step">
+      <div class="step-header">
+        <span class="step-number">3</span>
+        <span class="step-title">プロジェクト名を入力</span>
+      </div>
+      <p class="step-description">
+        プロジェクト名を入力します。4文字以上で好きな名前を入れてください（例：0000）。入力したら「プロジェクトを作成」ボタンをクリック。
+      </p>
+      <img src="help-3.jpg" alt="プロジェクト名入力" class="step-image">
+      <div class="step-note">
+        プロジェクト名は4文字以上必要です
+      </div>
+    </div>
+
+    <!-- STEP 4 -->
+    <div class="step">
+      <div class="step-header">
+        <span class="step-number">4</span>
+        <span class="step-title">「キーを作成」をクリック</span>
+      </div>
+      <p class="step-description">
+        最後に「キーを作成」ボタンをクリックすると、APIキーが生成されます。
+      </p>
+      <img src="help-4.jpg" alt="キーを作成ボタン" class="step-image">
+    </div>
+
+    <div class="final-note">
+      <h3>完了!</h3>
+      <p>生成されたAPIキー（AIza...で始まる文字列）をコピーして、アプリの設定画面に貼り付けてください。</p>
+    </div>
+  </div>
+</body>
+</html>

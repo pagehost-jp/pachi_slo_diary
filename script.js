@@ -234,11 +234,6 @@ async function deleteEntryFromCloud(entry) {
 
 // APIキー管理
 let geminiApiKey = localStorage.getItem('gemini_api_key') || '';
-// Google Maps APIキー（埋め込み）- リファラー制限済み
-const MAPS_API_KEY_DEFAULT = 'AIzaSyAgjCeqZyXRs_X8UfA3rA4z7kvNkfg5duU';
-let mapsApiKey = localStorage.getItem('maps_api_key') || MAPS_API_KEY_DEFAULT;
-let placesService = null;
-let mapsLoaded = false;
 
 // IndexedDB設定
 const DB_NAME = 'pachiSloDiary';
@@ -1155,11 +1150,19 @@ ${styleInstructions[blogStyle] || styleInstructions.polite}
   }
 }
 
-function copyBlog() {
-  const blogContent = document.getElementById('blog-content');
-  blogContent.select();
-  document.execCommand('copy');
-  alert('コピーしました');
+async function copyBlog() {
+  const blogContent = document.getElementById('blog-content').value;
+  try {
+    await navigator.clipboard.writeText(blogContent);
+    showToast('コピーしました');
+  } catch (err) {
+    // フォールバック（古いブラウザ用）
+    const textarea = document.getElementById('blog-content');
+    textarea.select();
+    document.execCommand('copy');
+    textarea.blur(); // フォーカスを外してキーボードを閉じる
+    showToast('コピーしました');
+  }
 }
 
 // ========== 今日のエントリーを開く ==========
@@ -1404,176 +1407,6 @@ async function generateHikoichiAnalysis() {
   }
 }
 
-// ========== ホール検索（Google Maps Places API） ==========
-function loadGoogleMapsAPI() {
-  if (mapsLoaded || !mapsApiKey) return Promise.resolve();
-
-  return new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${mapsApiKey}&libraries=places&callback=initPlacesService`;
-    script.async = true;
-    script.onerror = () => reject(new Error('Google Maps APIの読み込みに失敗しました'));
-    window.initPlacesService = () => {
-      mapsLoaded = true;
-      resolve();
-    };
-    document.head.appendChild(script);
-  });
-}
-
-async function searchNearbyHalls() {
-  const btn = document.getElementById('btn-location');
-  const modal = document.getElementById('hall-modal');
-  const statusDiv = document.getElementById('hall-search-status');
-  const listDiv = document.getElementById('nearby-hall-list');
-
-  // Maps APIキーチェック
-  if (!mapsApiKey) {
-    showToast('設定からGoogle Maps APIキーを入力してください', true);
-    openSettings();
-    return;
-  }
-
-  btn.classList.add('loading');
-  btn.disabled = true;
-  modal.style.display = 'flex';
-  statusDiv.classList.remove('hidden');
-  statusDiv.innerHTML = '<div class="ocr-loading-spinner"></div><span>位置情報を取得中...</span>';
-  listDiv.innerHTML = '';
-
-  try {
-    // 位置情報を取得
-    const position = await getCurrentPosition();
-    const { latitude, longitude } = position.coords;
-
-    statusDiv.innerHTML = '<div class="ocr-loading-spinner"></div><span>近くのパチンコ店を検索中...</span>';
-
-    // Google Maps APIを読み込み
-    await loadGoogleMapsAPI();
-
-    // Places APIで検索
-    const halls = await searchPlaces(latitude, longitude);
-
-    if (halls.length === 0) {
-      listDiv.innerHTML = '<div class="hall-error">近くにパチンコ店が見つかりませんでした</div>';
-    } else {
-      listDiv.innerHTML = halls.map(hall => `
-        <div class="hall-item" data-name="${hall.name}" data-address="${hall.address || ''}">
-          <span class="hall-name">${hall.name}</span>
-          <span class="hall-distance">${hall.distance}</span>
-        </div>
-      `).join('');
-
-      // クリックイベント
-      listDiv.querySelectorAll('.hall-item').forEach(item => {
-        item.addEventListener('click', () => {
-          document.getElementById('hall-name').value = item.dataset.name;
-          document.getElementById('btn-clear-hall').style.display = 'flex';
-          modal.style.display = 'none';
-          showToast(`${item.dataset.name} を選択しました`);
-        });
-      });
-    }
-
-    statusDiv.classList.add('hidden');
-
-  } catch (error) {
-    console.error('ホール検索エラー:', error);
-    statusDiv.classList.add('hidden');
-    listDiv.innerHTML = `<div class="hall-error">${error.message}</div>`;
-  } finally {
-    btn.classList.remove('loading');
-    btn.disabled = false;
-  }
-}
-
-function getCurrentPosition() {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) {
-      reject(new Error('このブラウザは位置情報に対応していません'));
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      resolve,
-      (error) => {
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            reject(new Error('位置情報の使用が許可されていません。設定から許可してください'));
-            break;
-          case error.POSITION_UNAVAILABLE:
-            reject(new Error('位置情報を取得できませんでした'));
-            break;
-          case error.TIMEOUT:
-            reject(new Error('位置情報の取得がタイムアウトしました'));
-            break;
-          default:
-            reject(new Error('位置情報の取得に失敗しました'));
-        }
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
-    );
-  });
-}
-
-function searchPlaces(lat, lng) {
-  return new Promise((resolve, reject) => {
-    // 一時的なdivを作成（Places APIの要件）
-    const mapDiv = document.createElement('div');
-    const map = new google.maps.Map(mapDiv);
-    const service = new google.maps.places.PlacesService(map);
-
-    const location = new google.maps.LatLng(lat, lng);
-
-    // パチンコ・スロット店を検索
-    service.nearbySearch({
-      location: location,
-      radius: 2000, // 2km以内
-      keyword: 'パチンコ スロット'
-    }, (results, status) => {
-      if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-        const halls = results.slice(0, 10).map(place => {
-          // 距離を計算
-          const distance = calculateDistance(lat, lng, place.geometry.location.lat(), place.geometry.location.lng());
-          return {
-            name: place.name,
-            address: place.vicinity,
-            distance: formatDistance(distance),
-            distanceValue: distance
-          };
-        });
-
-        // 距離でソート
-        halls.sort((a, b) => a.distanceValue - b.distanceValue);
-        resolve(halls);
-      } else if (status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
-        resolve([]);
-      } else {
-        reject(new Error('店舗の検索に失敗しました'));
-      }
-    });
-  });
-}
-
-function calculateDistance(lat1, lng1, lat2, lng2) {
-  const R = 6371000; // 地球の半径（メートル）
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLng / 2) * Math.sin(dLng / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
-function formatDistance(meters) {
-  if (meters < 1000) {
-    return `${Math.round(meters)}m`;
-  } else {
-    return `${(meters / 1000).toFixed(1)}km`;
-  }
-}
-
 // ========== グラフ表示 ==========
 let balanceChart = null;
 
@@ -1774,23 +1607,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateBalance();
   });
 
-  // 機種名入力時の統計表示 & 設定推測更新
+  // 機種名入力時の統計表示
   const machineInput = document.getElementById('machine-name');
   const clearBtn = document.getElementById('btn-clear-machine');
 
   machineInput.addEventListener('input', () => {
     showMachineStats(machineInput.value);
     clearBtn.style.display = machineInput.value ? 'flex' : 'none';
-    // OCRデータがあれば設定推測を再計算
-    if (currentOcrData) {
-      displaySettingEstimation(currentOcrData);
-    }
-  });
-  machineInput.addEventListener('change', () => {
-    // 選択確定時も再計算
-    if (currentOcrData) {
-      displaySettingEstimation(currentOcrData);
-    }
   });
   machineInput.addEventListener('focus', updateMachineDatalist);
 
@@ -1828,13 +1651,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-close-settings').addEventListener('click', closeSettings);
   document.getElementById('btn-save-settings').addEventListener('click', saveSettings);
   document.getElementById('btn-toggle-key').addEventListener('click', toggleKeyVisibility);
-  document.getElementById('btn-toggle-maps-key').addEventListener('click', toggleMapsKeyVisibility);
-
-  // ホール検索
-  document.getElementById('btn-location').addEventListener('click', searchNearbyHalls);
-  document.getElementById('btn-close-hall-modal').addEventListener('click', () => {
-    document.getElementById('hall-modal').style.display = 'none';
-  });
 
   // Firebase認証
   document.getElementById('btn-user').addEventListener('click', () => {
@@ -1872,11 +1688,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 未設定なら設定画面を自動表示
     openSettings();
   }
-
-  // Maps APIキーがあれば入力欄にセット
-  if (mapsApiKey) {
-    document.getElementById('maps-api-key-input').value = mapsApiKey;
-  }
 });
 
 // ========== 設定モーダル ==========
@@ -1895,21 +1706,10 @@ function closeSettings() {
 
 function saveSettings() {
   const apiKey = document.getElementById('api-key-input').value.trim();
-  const mapsKey = document.getElementById('maps-api-key-input').value.trim();
 
   if (apiKey) {
     geminiApiKey = apiKey;
     localStorage.setItem('gemini_api_key', apiKey);
-  }
-
-  // Maps APIキーは任意
-  if (mapsKey) {
-    mapsApiKey = mapsKey;
-    localStorage.setItem('maps_api_key', mapsKey);
-    mapsLoaded = false; // 再読み込み用
-  }
-
-  if (apiKey) {
     showToast('設定を保存しました');
     document.getElementById('settings-modal').style.display = 'none';
   } else {
@@ -1939,18 +1739,6 @@ function showToast(message, isError = false) {
 function toggleKeyVisibility() {
   const input = document.getElementById('api-key-input');
   const btn = document.getElementById('btn-toggle-key');
-  if (input.type === 'password') {
-    input.type = 'text';
-    btn.textContent = '非表示';
-  } else {
-    input.type = 'password';
-    btn.textContent = '表示';
-  }
-}
-
-function toggleMapsKeyVisibility() {
-  const input = document.getElementById('maps-api-key-input');
-  const btn = document.getElementById('btn-toggle-maps-key');
   if (input.type === 'password') {
     input.type = 'text';
     btn.textContent = '非表示';

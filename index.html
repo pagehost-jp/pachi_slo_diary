@@ -41,16 +41,7 @@
             <input type="password" id="api-key-input" class="input-text" placeholder="AIza...">
             <button type="button" class="btn-toggle-visibility" id="btn-toggle-key">表示</button>
           </div>
-          <p class="hint">Google AI Studioで無料取得: <a href="https://aistudio.google.com/app/apikey" target="_blank">こちら</a></p>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Google Maps APIキー（ホール検索用・任意）</label>
-          <div class="input-with-toggle">
-            <input type="password" id="maps-api-key-input" class="input-text" placeholder="AIza...">
-            <button type="button" class="btn-toggle-visibility" id="btn-toggle-maps-key">表示</button>
-          </div>
-          <p class="hint">Google Cloud Consoleで取得: <a href="https://console.cloud.google.com/apis/credentials" target="_blank">こちら</a>（Places API有効化必要）</p>
+          <p class="hint">Google AI Studioで無料取得: <a href="https://aistudio.google.com/app/apikey" target="_blank">こちら</a> | <a href="help.html" target="_blank">取得方法を見る</a></p>
         </div>
 
         <div class="form-group">
@@ -202,33 +193,13 @@
       <!-- ホール名 -->
       <div class="form-group">
         <label class="form-label">ホール名</label>
-        <div class="input-with-location">
-          <div class="input-with-clear">
-            <input type="text" id="hall-name" class="input-text" placeholder="例: マルハン新宿店" list="hall-list" autocomplete="off">
-            <button type="button" class="btn-clear" id="btn-clear-hall" style="display: none;">×</button>
-          </div>
-          <button type="button" class="btn-location" id="btn-location" title="現在地から探す">📍</button>
+        <div class="input-with-clear">
+          <input type="text" id="hall-name" class="input-text" placeholder="例: マルハン新宿店" list="hall-list" autocomplete="off">
+          <button type="button" class="btn-clear" id="btn-clear-hall" style="display: none;">×</button>
         </div>
         <datalist id="hall-list">
           <!-- JSで動的に追加 -->
         </datalist>
-      </div>
-
-      <!-- ホール選択モーダル -->
-      <div class="modal" id="hall-modal" style="display: none;">
-        <div class="modal-content">
-          <h3>近くのパチンコ店</h3>
-          <div class="hall-search-status" id="hall-search-status">
-            <div class="ocr-loading-spinner"></div>
-            <span>検索中...</span>
-          </div>
-          <div class="hall-list" id="nearby-hall-list">
-            <!-- JSで動的に追加 -->
-          </div>
-          <div class="modal-buttons">
-            <button class="btn btn-secondary" id="btn-close-hall-modal">閉じる</button>
-          </div>
-        </div>
       </div>
 
       <!-- 機種名 -->
