@@ -668,6 +668,7 @@ function clearEntryForm() {
   document.getElementById('blog-output').style.display = 'none';
   document.getElementById('ocr-result').style.display = 'none';
   document.getElementById('btn-ocr').style.display = 'none';
+  document.getElementById('machine-stats').style.display = 'none';
   uploadedImages = [null, null, null, null, null];
   currentOcrData = null;
   renderDropZonePreviews();
@@ -1637,6 +1638,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-back').addEventListener('click', showMonthlyView);
   document.getElementById('btn-save').addEventListener('click', saveCurrentEntry);
   document.getElementById('btn-delete').addEventListener('click', deleteCurrentEntry);
+  document.getElementById('btn-reset').addEventListener('click', () => {
+    if (confirm('入力内容をすべてリセットしますか？')) {
+      clearEntryForm();
+      showToast('リセットしました');
+    }
+  });
 
   // 日付変更
   const dateInput = document.getElementById('date-input');
