@@ -1113,7 +1113,7 @@ async function saveCurrentEntry() {
 
   try {
     await saveEntry(entry);
-    alert('保存しました');
+    showToast('保存しました');
     showMonthlyView();
   } catch (error) {
     alert('保存に失敗しました: ' + error.message);
