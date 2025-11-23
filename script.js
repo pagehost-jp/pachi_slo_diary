@@ -479,7 +479,7 @@ async function loadMonthlyData() {
 
     const thumbSrc = entry.images && entry.images.length > 0
       ? entry.images[0]
-      : 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%230f3460" width="100" height="100"/><text x="50" y="55" text-anchor="middle" fill="%23a0a0a0" font-size="12">No Image</text></svg>';
+      : 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Crect fill="%230f3460" width="100" height="100"/%3E%3Ctext x="50" y="55" text-anchor="middle" fill="%23a0a0a0" font-size="12"%3E-%3C/text%3E%3C/svg%3E';
 
     item.innerHTML = `
       <img class="daily-thumb" src="${thumbSrc}" alt="">
