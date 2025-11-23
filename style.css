@@ -568,8 +568,8 @@ body {
 }
 
 .toggle-btn.active {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: #5b7cfa;
+  border-color: #5b7cfa;
   color: white;
 }
 
