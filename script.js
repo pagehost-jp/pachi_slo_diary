@@ -969,8 +969,8 @@ function displayOcrResult(data) {
       skill_extreme_rate: '極ビタ成功率'
     },
     '小役': {
-      at_common_10mai_count: '共通10枚',
-      at_common_10mai_probability: '共通10枚確率',
+      at_common_10mai_count: 'AT共10枚',
+      at_common_10mai_probability: 'AT共10枚確率',
       suika_count: 'スイカ',
       suika_probability: 'スイカ確率',
       cherry_count: 'チェリー',
