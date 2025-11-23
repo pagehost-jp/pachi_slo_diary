@@ -1648,6 +1648,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-generate-blog').addEventListener('click', generateBlog);
   document.getElementById('btn-copy-blog').addEventListener('click', copyBlog);
 
+  // ロゴクリックで一覧画面へ
+  document.getElementById('logo-title').addEventListener('click', showMonthlyView);
+
   // 設定モーダル
   document.getElementById('btn-settings').addEventListener('click', openSettings);
   document.getElementById('btn-close-settings').addEventListener('click', closeSettings);
