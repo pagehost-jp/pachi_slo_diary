@@ -1,6 +1,10 @@
 // ========================================
 // pachi_slo_diary - Main Script
+// Version: 2025-11-23-v8 ← この数字で最新か確認できる
 // ========================================
+
+// ★起動時にバージョン表示（デバッグ用）
+console.log('[MAXIMA] Script loaded: v2025-11-23-v8');
 
 // ========== Firebase設定 ==========
 const firebaseConfig = {
@@ -74,9 +78,14 @@ async function handleAuthStateChanged(user) {
     // クラウドからデータを同期してリアルタイム同期開始
     await syncFromCloud();
     startRealtimeSync();
+
+    // ★ログイン完了後は必ず月別一覧を表示（自動遷移対策）
+    console.log('[DEBUG] Auth complete, forcing showMonthlyView');
+    showMonthlyView();
   } else {
     // ログアウト時：リアルタイム同期を停止
     stopRealtimeSync();
+    showMonthlyView();
   }
 }
 
@@ -337,6 +346,7 @@ let showAllMonths = false;
 let currentEntryId = null;
 let uploadedImages = [];
 let currentOcrData = null;
+let allowEntryView = false; // 起動直後はエントリー画面への遷移をブロック
 
 // ========== IndexedDB初期化 ==========
 async function initDB() {
@@ -452,6 +462,7 @@ async function getAllEntries() {
 
 // ========== 画面表示 ==========
 function showMonthlyView() {
+  console.log('[DEBUG] showMonthlyView called', new Error().stack);
   document.getElementById('monthly-view').style.display = 'block';
   document.getElementById('entry-view').style.display = 'none';
   document.getElementById('btn-back-header').style.display = 'none';
@@ -461,6 +472,15 @@ function showMonthlyView() {
 }
 
 function showEntryView(entryId = null) {
+  console.log('[DEBUG] showEntryView called, entryId:', entryId, 'allowEntryView:', allowEntryView);
+  console.log('[DEBUG] Stack:', new Error().stack);
+
+  // 起動直後の自動遷移をブロック
+  if (!allowEntryView) {
+    console.log('[DEBUG] showEntryView BLOCKED - not allowed yet');
+    return;
+  }
+
   document.getElementById('monthly-view').style.display = 'none';
   document.getElementById('entry-view').style.display = 'block';
   document.getElementById('btn-back-header').style.display = 'block';
@@ -569,7 +589,10 @@ async function loadMonthlyData() {
 
     const item = document.createElement('div');
     item.className = 'daily-item';
-    item.onclick = () => showEntryView(entry.id);
+    item.onclick = () => {
+      allowEntryView = true;
+      showEntryView(entry.id);
+    };
 
     const thumbSrc = entry.images && entry.images.length > 0
       ? entry.images[0]
@@ -651,10 +674,16 @@ function renderCalendar(entries) {
         <span class="day-number">${day}</span>
         <span class="day-balance ${balance >= 0 ? 'profit' : 'loss'}">${balance >= 0 ? '+' : ''}${(balance / 1000).toFixed(0)}k</span>
       `;
-      cell.onclick = () => showEntryView(entry.id);
+      cell.onclick = () => {
+        allowEntryView = true;
+        showEntryView(entry.id);
+      };
     } else {
       cell.innerHTML = `<span class="day-number">${day}</span>`;
-      cell.onclick = () => openEntryForDate(currentYear, currentMonth, day);
+      cell.onclick = () => {
+        allowEntryView = true;
+        openEntryForDate(currentYear, currentMonth, day);
+      };
     }
 
     if (isCurrentMonth && day === today.getDate()) {
@@ -1380,9 +1409,22 @@ async function getHallStats() {
     const hall = entry.hall;
 
     if (!stats[hall]) {
-      stats[hall] = { count: 0 };
+      stats[hall] = {
+        count: 0,
+        wins: 0,
+        losses: 0,
+        totalBalance: 0
+      };
     }
+
+    const balance = (entry.out || 0) - (entry.in || 0);
     stats[hall].count++;
+    stats[hall].totalBalance += balance;
+    if (balance >= 0) {
+      stats[hall].wins++;
+    } else {
+      stats[hall].losses++;
+    }
   });
 
   return stats;
@@ -1513,6 +1555,24 @@ let balanceChart = null;
 async function showChart(chartType = 'monthly') {
   document.getElementById('chart-modal').style.display = 'flex';
 
+  const ctx = document.getElementById('balance-chart').getContext('2d');
+
+  if (balanceChart) {
+    balanceChart.destroy();
+  }
+
+  // 機種別グラフ
+  if (chartType === 'machine') {
+    await showMachineChart(ctx);
+    return;
+  }
+
+  // 店舗別グラフ
+  if (chartType === 'hall') {
+    await showHallChart(ctx);
+    return;
+  }
+
   const entries = await getEntriesByYear(currentYear);
 
   // 月別データを集計
@@ -1540,12 +1600,6 @@ async function showChart(chartType = 'monthly') {
       return cumulative;
     });
     label = '累計収支';
-  }
-
-  const ctx = document.getElementById('balance-chart').getContext('2d');
-
-  if (balanceChart) {
-    balanceChart.destroy();
   }
 
   balanceChart = new Chart(ctx, {
@@ -1585,6 +1639,228 @@ async function showChart(chartType = 'monthly') {
           },
           ticks: {
             color: '#a0a0a0'
+          }
+        }
+      }
+    }
+  });
+}
+
+// 機種別グラフ表示
+async function showMachineChart(ctx) {
+  const stats = await getMachineStats();
+
+  // 累計差枚でソート（上位10機種）
+  const sorted = Object.entries(stats)
+    .sort((a, b) => Math.abs(b[1].totalBalance) - Math.abs(a[1].totalBalance))
+    .slice(0, 10);
+
+  if (sorted.length === 0) {
+    balanceChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['データなし'],
+        datasets: [{
+          label: '機種別収支',
+          data: [0],
+          backgroundColor: 'rgba(128, 128, 128, 0.6)',
+          borderColor: '#808080',
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false }
+        }
+      }
+    });
+    return;
+  }
+
+  const labels = sorted.map(([machine]) => {
+    // 長い機種名は省略
+    return machine.length > 8 ? machine.substring(0, 7) + '…' : machine;
+  });
+  const balanceData = sorted.map(([, data]) => data.totalBalance);
+  const winRateData = sorted.map(([, data]) =>
+    data.count > 0 ? Math.round((data.wins / data.count) * 100) : 0
+  );
+  const countData = sorted.map(([, data]) => data.count);
+
+  balanceChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: '累計差枚',
+        data: balanceData,
+        backgroundColor: balanceData.map(val => val >= 0 ? 'rgba(0, 255, 136, 0.6)' : 'rgba(255, 71, 87, 0.6)'),
+        borderColor: balanceData.map(val => val >= 0 ? '#00ff88' : '#ff4757'),
+        borderWidth: 2,
+        yAxisID: 'y'
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          callbacks: {
+            afterLabel: function(context) {
+              const index = context.dataIndex;
+              const machine = sorted[index][0];
+              const data = sorted[index][1];
+              const winRate = data.count > 0 ? Math.round((data.wins / data.count) * 100) : 0;
+              return [
+                `実戦: ${data.count}回`,
+                `勝率: ${winRate}%`,
+                `平均: ${Math.round(data.totalBalance / data.count).toLocaleString()}枚`
+              ];
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: {
+            color: 'rgba(255, 255, 255, 0.1)'
+          },
+          ticks: {
+            color: '#a0a0a0',
+            callback: (value) => (value / 1000) + 'k'
+          }
+        },
+        y: {
+          grid: {
+            display: false
+          },
+          ticks: {
+            color: '#a0a0a0',
+            font: {
+              size: 11
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+// 店舗別グラフ表示
+async function showHallChart(ctx) {
+  const stats = await getHallStats();
+
+  // 来店回数でソート（上位10店舗）
+  const sorted = Object.entries(stats)
+    .sort((a, b) => b[1].count - a[1].count)
+    .slice(0, 10);
+
+  if (sorted.length === 0) {
+    balanceChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['データなし'],
+        datasets: [{
+          label: '店舗別',
+          data: [0],
+          backgroundColor: 'rgba(128, 128, 128, 0.6)',
+          borderColor: '#808080',
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false }
+        }
+      }
+    });
+    return;
+  }
+
+  const labels = sorted.map(([hall]) => {
+    // 長い店名は省略
+    return hall.length > 10 ? hall.substring(0, 9) + '…' : hall;
+  });
+  const winRateData = sorted.map(([, data]) =>
+    data.count > 0 ? Math.round((data.wins / data.count) * 100) : 0
+  );
+
+  balanceChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: '勝率',
+        data: winRateData,
+        backgroundColor: winRateData.map(val => {
+          if (val >= 50) return 'rgba(0, 255, 136, 0.6)';
+          if (val >= 30) return 'rgba(255, 193, 7, 0.6)';
+          return 'rgba(255, 71, 87, 0.6)';
+        }),
+        borderColor: winRateData.map(val => {
+          if (val >= 50) return '#00ff88';
+          if (val >= 30) return '#ffc107';
+          return '#ff4757';
+        }),
+        borderWidth: 2
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return `勝率: ${context.raw}%`;
+            },
+            afterLabel: function(context) {
+              const index = context.dataIndex;
+              const data = sorted[index][1];
+              const avgBalance = data.count > 0 ? Math.round(data.totalBalance / data.count) : 0;
+              return [
+                `来店: ${data.count}回`,
+                `勝ち: ${data.wins}回 / 負け: ${data.losses}回`,
+                `累計: ${data.totalBalance >= 0 ? '+' : ''}${data.totalBalance.toLocaleString()}枚`,
+                `平均: ${avgBalance >= 0 ? '+' : ''}${avgBalance.toLocaleString()}枚`
+              ];
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          min: 0,
+          max: 100,
+          grid: {
+            color: 'rgba(255, 255, 255, 0.1)'
+          },
+          ticks: {
+            color: '#a0a0a0',
+            callback: (value) => value + '%'
+          }
+        },
+        y: {
+          grid: {
+            display: false
+          },
+          ticks: {
+            color: '#a0a0a0',
+            font: {
+              size: 11
+            }
           }
         }
       }
@@ -1633,8 +1909,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Firebase初期化
   await initFirebase();
 
-  // 起動時に今日のエントリーを直接開く
-  await openTodaysEntry();
+  // 起動時に一覧画面を表示
+  showMonthlyView();
+
+  // 3秒後にエントリー画面への遷移を許可（初期ロード・同期完了を待つ）
+  setTimeout(() => {
+    allowEntryView = true;
+    console.log('[DEBUG] allowEntryView enabled after timeout');
+  }, 3000);
 
   // 年移動
   document.getElementById('btn-prev-year').addEventListener('click', prevYear);
@@ -1670,8 +1952,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
-  // エントリー操作
-  document.getElementById('btn-add-entry').addEventListener('click', () => showEntryView());
+  // エントリー操作（ユーザー操作時は即座に許可）
+  document.getElementById('btn-add-entry').addEventListener('click', () => {
+    allowEntryView = true;
+    showEntryView();
+  });
   document.getElementById('btn-back-header').addEventListener('click', showMonthlyView);
   document.getElementById('btn-save').addEventListener('click', saveCurrentEntry);
   document.getElementById('btn-delete').addEventListener('click', deleteCurrentEntry);
@@ -1969,15 +2254,15 @@ async function importData(file) {
 // グローバル関数（onclick用）
 window.removeImage = removeImage;
 
-// ========== Service Worker登録 ==========
+// ========== Service Worker登録（一時的に無効化） ==========
+// PWAデバッグのため、SWを解除してから無効化
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js')
-      .then((registration) => {
-        console.log('SW registered:', registration.scope);
-      })
-      .catch((error) => {
-        console.log('SW registration failed:', error);
-      });
+  // 既存のSWをすべて解除
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    for (const registration of registrations) {
+      registration.unregister();
+      console.log('[SW] Unregistered:', registration.scope);
+    }
   });
 }
+// TODO: 問題解決後にSW登録を復活させる
