@@ -1,6 +1,6 @@
 {
-  "name": "Manex",
-  "short_name": "Manex",
+  "name": "ManeX",
+  "short_name": "ManeX",
   "description": "Personal data management",
   "start_url": "./index.html",
   "display": "standalone",
