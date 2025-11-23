@@ -1088,6 +1088,20 @@ body {
   gap: 8px;
 }
 
+.ocr-category-header {
+  grid-column: 1 / -1;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--success);
+  padding: 8px 0 4px 0;
+  border-bottom: 1px solid var(--border);
+  margin-top: 8px;
+}
+
+.ocr-category-header:first-child {
+  margin-top: 0;
+}
+
 .ocr-data-item {
   display: flex;
   justify-content: space-between;
@@ -1110,228 +1124,11 @@ body {
   font-weight: 600;
 }
 
-.ocr-data-item.highlight {
-  background: linear-gradient(135deg, #1a3a5c, #0f3460);
-  border: 1px solid var(--success);
-}
-
-.ocr-data-item.highlight .ocr-data-value {
-  color: #00ff88;
-  font-size: 1rem;
-}
-
 .ocr-error {
   color: var(--loss);
   text-align: center;
   padding: 12px;
   font-size: 0.9rem;
-}
-
-/* ========== 設定推測 ========== */
-.setting-estimation {
-  grid-column: 1 / -1;
-  margin-top: 16px;
-  padding: 16px;
-  background: linear-gradient(135deg, #1a1a3e, #2a2a5e);
-  border-radius: 12px;
-  border: 2px solid #5b7cfa;
-}
-
-.estimation-header {
-  font-size: 1rem;
-  font-weight: 700;
-  color: #5b7cfa;
-  margin-bottom: 12px;
-  text-align: center;
-}
-
-.estimation-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
-}
-
-.est-label {
-  color: var(--text-sub);
-  font-size: 0.85rem;
-  flex: 1;
-}
-
-.est-value {
-  color: var(--text-main);
-  font-size: 0.85rem;
-  flex: 1;
-  text-align: center;
-}
-
-.est-result {
-  color: #f0c040;
-  font-weight: 600;
-  font-size: 0.9rem;
-  flex: 1;
-  text-align: right;
-}
-
-.estimation-total {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 16px;
-  padding: 12px;
-  background: rgba(0,0,0,0.3);
-  border-radius: 8px;
-}
-
-.total-label {
-  color: var(--text-sub);
-  font-size: 0.9rem;
-}
-
-.total-setting {
-  font-size: 1.4rem;
-  font-weight: 700;
-  padding: 4px 16px;
-  border-radius: 8px;
-}
-
-.total-setting.setting-1 { color: #888; }
-.total-setting.setting-2 { color: #6cf; }
-.total-setting.setting-3 { color: #6f6; }
-.total-setting.setting-4 { color: #ff6; }
-.total-setting.setting-5 { color: #f90; }
-.total-setting.setting-6 { color: #f66; background: rgba(255,102,102,0.2); }
-
-.total-confidence {
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-/* 信頼度レベル */
-.conf-high { color: #00ff88; }
-.conf-mid { color: #f0c040; }
-.conf-low { color: #f90; }
-.conf-unknown { color: #888; }
-
-/* 設定推測ノート */
-.estimation-note {
-  font-size: 0.75rem;
-  color: var(--text-sub);
-  text-align: center;
-  margin-bottom: 12px;
-}
-
-.est-note {
-  font-size: 0.75rem;
-  color: #f0c040;
-  padding: 4px 0 8px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
-}
-
-/* ゲーム数による信頼度表示 */
-.game-warning {
-  color: #ff6b6b;
-  font-size: 0.8rem;
-  padding: 8px 12px;
-  margin-top: 12px;
-  background: rgba(255, 107, 107, 0.15);
-  border-radius: 8px;
-}
-
-.game-note {
-  color: #f0c040;
-  font-size: 0.8rem;
-  padding: 8px 12px;
-  margin-top: 12px;
-  background: rgba(240, 192, 64, 0.15);
-  border-radius: 8px;
-}
-
-.game-good {
-  color: #00ff88;
-  font-size: 0.8rem;
-  padding: 8px 12px;
-  margin-top: 12px;
-  background: rgba(0, 255, 136, 0.15);
-  border-radius: 8px;
-}
-
-/* プロコメント */
-.pro-comment {
-  margin-top: 16px;
-  padding: 12px 16px;
-  background: linear-gradient(135deg, rgba(91, 124, 250, 0.2), rgba(91, 124, 250, 0.1));
-  border-radius: 10px;
-  border-left: 4px solid #5b7cfa;
-  font-size: 0.85rem;
-  color: var(--text-main);
-  line-height: 1.6;
-}
-
-/* 重要・超重要行 */
-.estimation-row.important {
-  background: rgba(0, 255, 136, 0.1);
-  padding: 8px;
-  margin: 0 -8px;
-  border-radius: 6px;
-}
-
-.estimation-row.critical {
-  background: rgba(255, 102, 102, 0.15);
-  padding: 8px;
-  margin: 0 -8px;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 102, 102, 0.3);
-}
-
-.estimation-row.critical .est-label::before {
-  content: '★ ';
-  color: #f66;
-}
-
-/* 設定推測 - 機種名未入力 */
-.estimation-pending {
-  text-align: center;
-  padding: 20px;
-}
-
-.pending-icon {
-  font-size: 1.5rem;
-  display: block;
-  margin-bottom: 8px;
-}
-
-.pending-text {
-  color: var(--text-sub);
-  font-size: 0.9rem;
-}
-
-/* 設定推測 - 非対応機種 */
-.estimation-unsupported {
-  text-align: center;
-  padding: 20px;
-}
-
-.unsupported-icon {
-  font-size: 1.5rem;
-  display: block;
-  margin-bottom: 8px;
-}
-
-.unsupported-text {
-  color: var(--loss);
-  font-size: 0.9rem;
-  display: block;
-  margin-bottom: 12px;
-}
-
-.supported-list {
-  font-size: 0.75rem;
-  color: var(--text-sub);
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 6px;
 }
 
 .ocr-success {

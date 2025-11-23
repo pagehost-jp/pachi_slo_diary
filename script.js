@@ -875,22 +875,35 @@ async function performOcr() {
 重複している場合は無視して、ユニークなデータのみを読み取ってください。
 
 読み取るデータ:
-【共通項目】
-- game_count: ゲーム数（数値のみ）
-- bb_probability: 総BB確率（例: "1/181.58"）
+【基本情報】
+- game_count: ゲーム数（数値のみ、例: "2542"）
+- dance_time_games: DANCE TIMEゲーム数（数値のみ、例: "386"）
+- dj_zone_games: DJ ZONEゲーム数（数値のみ、例: "844"）
+
+【ボーナス情報】
+- total_bb_count: 総BB回数（異色含む）（数値のみ、例: "14"）
+- total_bb_probability: 総BB確率（異色含む）（例: "1/181.58"）
+- rb_count: RB回数（数値のみ、例: "8"）
 - rb_probability: RB確率（例: "1/317.75"）
+- normal_bb_count: NORMAL-BB回数（数値のみ、例: "6"）
+- hyper_bb_count: HYPER-BB回数（数値のみ、例: "8"）
+- double_up_bb_count: DOUBLE-UP-BB回数（NORMAL-BB・HYPER-BB合計）（数値のみ、例: "2"）
+- normal_bb_dt_entry: NORMAL-BB後DT突入回数（数値のみ、例: "3"）
+
+【技術介入】
 - skill_true_rate: 真・技術介入成功率（例: "100.0%"）
 - skill_extreme_rate: 極・技術介入成功率（例: "33.4%"）
-- dance_time_count: DANCE TIME突入回数（数値のみ）
 
-【ディスクアップ2用】
+【小役確率】
+- at_common_10mai_count: AT中共通10枚回数（数値のみ、例: "22"）
+- at_common_10mai_probability: AT中共通10枚確率（例: "1/55.91"）
+- suika_count: スイカ回数（数値のみ、例: "48"）
 - suika_probability: スイカ確率（例: "1/52.96"）
+- cherry_count: チェリー回数（数値のみ、例: "70"）
 - cherry_probability: チェリー確率（例: "1/36.32"）
-- common_10mai_probability: AT中共通10枚確率（例: "1/55.91"）
 
-【ウルトラリミックス用】
-- suikaA_probability: スイカA確率（例: "1/57.03"）※スイカAのみの確率
-- sanmai_probability: 3枚役確率（例: "1/13.12"）※ボーナス/☆/☆の確率
+【その他】
+- max_medals: 最大獲得枚数（数値のみ、例: "1662"）
 
 JSONのみを返してください。読み取れない項目はnullにしてください。`;
 
@@ -929,46 +942,79 @@ function displayOcrResult(data) {
   const resultDiv = document.getElementById('ocr-result');
   const dataGrid = document.getElementById('ocr-data-grid');
 
-  // 読み取り可能な全項目
-  const labels = {
-    game_count: 'ゲーム数',
-    bb_probability: 'BB確率',
-    rb_probability: 'RB確率',
-    skill_true_rate: '真ビタ成功率',
-    skill_extreme_rate: '極ビタ成功率',
-    dance_time_count: 'DT突入',
-    // ディスクアップ2用
-    suika_probability: 'スイカ確率',
-    cherry_probability: 'チェリー確率',
-    common_10mai_probability: '共通10枚',
-    // ウルトラリミックス用
-    suikaA_probability: 'スイカA確率',
-    sanmai_probability: '3枚役確率'
+  // 読み取り可能な全項目（カテゴリ別）
+  const categories = {
+    '基本情報': {
+      game_count: 'ゲーム数',
+      dance_time_games: 'DT G数',
+      dj_zone_games: 'DJ ZONE G数'
+    },
+    'ボーナス': {
+      total_bb_count: '総BB回数',
+      total_bb_probability: '総BB確率',
+      rb_count: 'RB回数',
+      rb_probability: 'RB確率',
+      normal_bb_count: 'NORMAL-BB',
+      hyper_bb_count: 'HYPER-BB',
+      double_up_bb_count: 'DOUBLE-UP-BB',
+      normal_bb_dt_entry: 'NB後DT突入'
+    },
+    '技術介入': {
+      skill_true_rate: '真ビタ成功率',
+      skill_extreme_rate: '極ビタ成功率'
+    },
+    '小役': {
+      at_common_10mai_count: '共通10枚',
+      at_common_10mai_probability: '共通10枚確率',
+      suika_count: 'スイカ',
+      suika_probability: 'スイカ確率',
+      cherry_count: 'チェリー',
+      cherry_probability: 'チェリー確率'
+    },
+    'その他': {
+      max_medals: '最大獲得枚数'
+    }
   };
-
-  // 設定判別で重要な項目
-  const importantKeys = [
-    'suika_probability', 'cherry_probability', 'common_10mai_probability',
-    'suikaA_probability', 'sanmai_probability'
-  ];
 
   dataGrid.innerHTML = '';
 
   let itemCount = 0;
-  for (const [key, label] of Object.entries(labels)) {
-    if (data[key] !== null && data[key] !== undefined) {
-      const item = document.createElement('div');
-      item.className = 'ocr-data-item';
-      // 設定推測に重要な項目はハイライト
-      if (importantKeys.includes(key)) {
-        item.classList.add('highlight');
+
+  for (const [categoryName, labels] of Object.entries(categories)) {
+    // このカテゴリにデータがあるかチェック
+    const hasData = Object.keys(labels).some(key => data[key] !== null && data[key] !== undefined);
+    if (!hasData) continue;
+
+    // カテゴリヘッダー
+    const categoryHeader = document.createElement('div');
+    categoryHeader.className = 'ocr-category-header';
+    categoryHeader.textContent = categoryName;
+    dataGrid.appendChild(categoryHeader);
+
+    for (const [key, label] of Object.entries(labels)) {
+      if (data[key] !== null && data[key] !== undefined) {
+        const item = document.createElement('div');
+        item.className = 'ocr-data-item';
+
+        // 値のフォーマット（回数には「回」、G数には「G」、枚数には「枚」を追加）
+        let displayValue = data[key];
+        if (key.endsWith('_count') || key === 'normal_bb_dt_entry') {
+          displayValue = `${data[key]}回`;
+        } else if (key.endsWith('_games')) {
+          displayValue = `${data[key]}G`;
+        } else if (key === 'game_count') {
+          displayValue = `${data[key]}G`;
+        } else if (key === 'max_medals') {
+          displayValue = `${data[key]}枚`;
+        }
+
+        item.innerHTML = `
+          <span class="ocr-data-label">${label}</span>
+          <span class="ocr-data-value">${displayValue}</span>
+        `;
+        dataGrid.appendChild(item);
+        itemCount++;
       }
-      item.innerHTML = `
-        <span class="ocr-data-label">${label}</span>
-        <span class="ocr-data-value">${data[key]}</span>
-      `;
-      dataGrid.appendChild(item);
-      itemCount++;
     }
   }
 
@@ -978,536 +1024,6 @@ function displayOcrResult(data) {
   }
 
   resultDiv.style.display = 'block';
-
-  // 設定推測を表示
-  displaySettingEstimation(data);
-}
-
-// ========== 設定推測機能 ==========
-// 機種別メーカー発表値データベース
-const MACHINE_SETTINGS = {
-  // ディスクアップ2（サミー公式）
-  'ディスクアップ2': {
-    name: 'ディスクアップ2',
-    maker: 'サミー',
-    bb: { 1: 287.4, 2: 282.5, 3: 278.9, 4: 266.4, 5: 258.0, 6: 245.1 },
-    rb: { 1: 385.5, 2: 385.5, 3: 376.6, 4: 360.1, 5: 341.3, 6: 322.8 },
-    combined: { 1: 164.5, 2: 163.0, 3: 160.1, 4: 153.2, 5: 146.9, 6: 139.4 },
-    suika: { 1: 56.0, 2: 55.7, 3: 55.7, 4: 55.7, 5: 55.7, 6: 51.9 },
-    cherry: { 1: 37.9, 2: 37.4, 3: 37.0, 4: 36.6, 5: 36.1, 6: 35.6 },
-    common10: { 1: 64.0, 2: 62.7, 3: 59.6, 4: 57.1, 5: 54.2, 6: 50.5 },
-    weight: { bb: 1.0, rb: 1.2, combined: 1.5, suika: 2.0, cherry: 1.5, common10: 3.0 },
-    tips: '共通10枚が最重要。スイカ1/52以下で設定6濃厚'
-  },
-
-  // ディスクアップ ウルトラリミックス（サミー）※ディスク3
-  'ディスクアップウルトラリミックス': {
-    name: 'ディスクアップ ウルトラリミックス',
-    maker: 'サミー',
-    // 小役確率（メーカー発表値）
-    suikaA: { 1: 59.6, 2: 59.1, 5: 57.0, 6: 54.4 },  // スイカA
-    suika: { 1: 49.3, 2: 49.0, 5: 47.5, 6: 45.7 },   // スイカ合算
-    sanmai: { 1: 13.7, 2: 13.4, 5: 12.9, 6: 12.6 },  // 3枚役（ボーナス/☆/☆）
-    kakuteiCherry: { 1: 3276.8, 2: 2978.9, 5: 2340.6, 6: 1927.5 }, // 確定チェリー
-    weight: { suikaA: 2.5, suika: 2.0, sanmai: 3.0, kakuteiCherry: 1.5 },
-    tips: '3枚役が最重要。スイカA 1/54以下で設定6期待。設定3,4は存在しない'
-  }
-};
-
-// 機種名のエイリアス（表記ゆれ対応）
-const MACHINE_ALIASES = {
-  // ディスクアップ2
-  'ディスクアップ2': 'ディスクアップ2',
-  'ディスクアップII': 'ディスクアップ2',
-  'DISC UP 2': 'ディスクアップ2',
-  'DISC UP2': 'ディスクアップ2',
-  'discup2': 'ディスクアップ2',
-  // ディスクアップ ウルトラリミックス（ディスク3）
-  'ウルトラリミックス': 'ディスクアップウルトラリミックス',
-  'ULTRAREMIX': 'ディスクアップウルトラリミックス',
-  'ULTRA REMIX': 'ディスクアップウルトラリミックス',
-  'ディスク3': 'ディスクアップウルトラリミックス',
-  'ディスクアップ3': 'ディスクアップウルトラリミックス',
-  'ディスクアップウルトラリミックス': 'ディスクアップウルトラリミックス',
-  'ディスクアップ ウルトラリミックス': 'ディスクアップウルトラリミックス',
-  'A-SLOT': 'ディスクアップウルトラリミックス',
-};
-
-// 機種名から設定データを取得
-function getMachineSettings(machineName) {
-  if (!machineName) return null;
-
-  // 完全一致
-  if (MACHINE_SETTINGS[machineName]) {
-    return MACHINE_SETTINGS[machineName];
-  }
-
-  // エイリアスチェック
-  const normalized = machineName.toLowerCase().replace(/\s+/g, '');
-  for (const [alias, canonical] of Object.entries(MACHINE_ALIASES)) {
-    if (normalized.includes(alias.toLowerCase().replace(/\s+/g, ''))) {
-      return MACHINE_SETTINGS[canonical];
-    }
-  }
-
-  // 部分一致
-  for (const [name, settings] of Object.entries(MACHINE_SETTINGS)) {
-    if (machineName.includes(name) || name.includes(machineName)) {
-      return settings;
-    }
-  }
-
-  return null;
-}
-
-function displaySettingEstimation(data) {
-  const dataGrid = document.getElementById('ocr-data-grid');
-
-  // 既存の設定推測を削除
-  const existingEstimation = dataGrid.querySelector('.setting-estimation');
-  if (existingEstimation) existingEstimation.remove();
-
-  // 機種名を取得
-  const machineName = document.getElementById('machine-name').value.trim();
-
-  // 機種名が未入力の場合
-  if (!machineName) {
-    const html = `<div class="setting-estimation">
-      <div class="estimation-header">📊 設定推測</div>
-      <div class="estimation-pending">
-        <span class="pending-icon">⚠️</span>
-        <span class="pending-text">機種名を入力すると設定推測が表示されます</span>
-      </div>
-    </div>`;
-    dataGrid.insertAdjacentHTML('beforeend', html);
-    return;
-  }
-
-  // 機種データを取得
-  const machineData = getMachineSettings(machineName);
-
-  // 非対応機種の場合
-  if (!machineData) {
-    const supportedList = Object.keys(MACHINE_SETTINGS).join('、');
-    const html = `<div class="setting-estimation">
-      <div class="estimation-header">📊 設定推測</div>
-      <div class="estimation-unsupported">
-        <span class="unsupported-icon">❌</span>
-        <span class="unsupported-text">「${machineName}」は設定推測未対応です</span>
-        <div class="supported-list">対応機種: ${supportedList}</div>
-      </div>
-    </div>`;
-    dataGrid.insertAdjacentHTML('beforeend', html);
-    return;
-  }
-
-  const results = [];
-  let settingPoints = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
-  let totalWeight = 0;
-  let gameCount = 0;
-
-  // ゲーム数を取得（信頼度計算用）
-  if (data.game_count) {
-    gameCount = parseInt(data.game_count.toString().replace(/[^0-9]/g, ''));
-  }
-
-  // BB確率から推測
-  if (data.bb_probability && machineData.bb) {
-    const prob = parseProbability(data.bb_probability);
-    if (prob) {
-      const analysis = analyzeByThreshold(prob, machineData.bb, machineData.weight.bb);
-      results.push({
-        label: 'BB確率',
-        value: data.bb_probability,
-        likely: analysis.likelySettings,
-        note: analysis.note
-      });
-      addWeightedScores(settingPoints, analysis.scores);
-      totalWeight += machineData.weight.bb;
-    }
-  }
-
-  // RB確率から推測
-  if (data.rb_probability && machineData.rb) {
-    const prob = parseProbability(data.rb_probability);
-    if (prob) {
-      const analysis = analyzeByThreshold(prob, machineData.rb, machineData.weight.rb);
-      results.push({
-        label: 'RB確率',
-        value: data.rb_probability,
-        likely: analysis.likelySettings,
-        note: analysis.note
-      });
-      addWeightedScores(settingPoints, analysis.scores);
-      totalWeight += machineData.weight.rb;
-    }
-  }
-
-  // スイカ確率から推測
-  if (data.suika_probability && machineData.suika) {
-    const prob = parseProbability(data.suika_probability);
-    if (prob) {
-      const analysis = analyzeByThresholdWithTips(prob, machineData.suika, machineData.weight.suika, machineData.name);
-      results.push({
-        label: 'スイカ確率',
-        value: data.suika_probability,
-        likely: analysis.likelySettings,
-        note: analysis.note,
-        important: true
-      });
-      addWeightedScores(settingPoints, analysis.scores);
-      totalWeight += machineData.weight.suika;
-    }
-  }
-
-  // チェリー確率から推測（ディスクアップ2）
-  if (data.cherry_probability && machineData.cherry) {
-    const prob = parseProbability(data.cherry_probability);
-    if (prob) {
-      const analysis = analyzeByThreshold(prob, machineData.cherry, machineData.weight.cherry);
-      results.push({
-        label: 'チェリー確率',
-        value: data.cherry_probability,
-        likely: analysis.likelySettings,
-        note: analysis.note
-      });
-      addWeightedScores(settingPoints, analysis.scores);
-      totalWeight += machineData.weight.cherry;
-    }
-  }
-
-  // 共通10枚から推測（ディスクアップ2専用）
-  if (data.common_10mai_probability && machineData.common10) {
-    const prob = parseProbability(data.common_10mai_probability);
-    if (prob) {
-      const analysis = analyzeCommon10(prob, machineData.common10, machineData.weight.common10);
-      results.push({
-        label: '共通10枚',
-        value: data.common_10mai_probability,
-        likely: analysis.likelySettings,
-        note: analysis.note,
-        critical: true
-      });
-      addWeightedScores(settingPoints, analysis.scores);
-      totalWeight += machineData.weight.common10;
-    }
-  }
-
-  // スイカA確率から推測（ウルトラリミックス）
-  if (data.suikaA_probability && machineData.suikaA) {
-    const prob = parseProbability(data.suikaA_probability);
-    if (prob) {
-      const analysis = analyzeByThresholdFor1256(prob, machineData.suikaA, machineData.weight.suikaA);
-      results.push({
-        label: 'スイカA確率',
-        value: data.suikaA_probability,
-        likely: analysis.likelySettings,
-        note: analysis.note,
-        important: true
-      });
-      addWeightedScores(settingPoints, analysis.scores);
-      totalWeight += machineData.weight.suikaA;
-    }
-  }
-
-  // 3枚役確率から推測（ウルトラリミックス・最重要）
-  if (data.sanmai_probability && machineData.sanmai) {
-    const prob = parseProbability(data.sanmai_probability);
-    if (prob) {
-      const analysis = analyzeByThresholdFor1256(prob, machineData.sanmai, machineData.weight.sanmai);
-      results.push({
-        label: '3枚役確率',
-        value: data.sanmai_probability,
-        likely: analysis.likelySettings,
-        note: analysis.note,
-        critical: true
-      });
-      addWeightedScores(settingPoints, analysis.scores);
-      totalWeight += machineData.weight.sanmai;
-    }
-  }
-
-  // 結果がなければ表示しない
-  if (results.length === 0) return;
-
-  // 総合判定
-  const sortedSettings = Object.entries(settingPoints).sort((a, b) => b[1] - a[1]);
-  const topSetting = sortedSettings[0][0];
-  const topScore = sortedSettings[0][1];
-  const secondScore = sortedSettings[1][1];
-
-  // 信頼度計算（ゲーム数と判定要素数を考慮）
-  const confidence = calculateConfidence(topScore, secondScore, gameCount, results.length);
-
-  // HTML生成
-  let html = '<div class="setting-estimation">';
-  html += `<div class="estimation-header">📊 設定推測【${machineData.name}】</div>`;
-  html += `<div class="estimation-note">※${machineData.maker}発表値に基づく判定</div>`;
-
-  results.forEach(r => {
-    let rowClass = 'estimation-row';
-    if (r.critical) rowClass += ' critical';
-    else if (r.important) rowClass += ' important';
-
-    html += `<div class="${rowClass}">
-      <span class="est-label">${r.label}</span>
-      <span class="est-value">${r.value}</span>
-      <span class="est-result">${r.likely}</span>
-    </div>`;
-    if (r.note) {
-      html += `<div class="est-note">${r.note}</div>`;
-    }
-  });
-
-  // ゲーム数による信頼度注意
-  let gameNote = '';
-  if (gameCount > 0 && gameCount < 2000) {
-    gameNote = `<div class="game-warning">⚠️ ${gameCount}G：試行不足のため参考程度</div>`;
-  } else if (gameCount >= 2000 && gameCount < 5000) {
-    gameNote = `<div class="game-note">📝 ${gameCount}G：ある程度の信頼性</div>`;
-  } else if (gameCount >= 5000) {
-    gameNote = `<div class="game-good">✅ ${gameCount}G：信頼性高い</div>`;
-  }
-
-  html += gameNote;
-
-  // 総合判定
-  html += `<div class="estimation-total">
-    <span class="total-label">総合判定</span>
-    <span class="total-setting setting-${topSetting}">設定${topSetting}</span>
-    <span class="total-confidence ${confidence.class}">${confidence.label}</span>
-  </div>`;
-
-  // プロ視点のコメント
-  html += `<div class="pro-comment">${generateProComment(sortedSettings, results, gameCount)}</div>`;
-
-  html += '</div>';
-
-  const dataGrid = document.getElementById('ocr-data-grid');
-  dataGrid.insertAdjacentHTML('beforeend', html);
-}
-
-// 確率文字列をパース（"1/52.96" → 52.96）
-function parseProbability(str) {
-  if (!str) return null;
-  const match = str.toString().match(/1\/(\d+\.?\d*)/);
-  return match ? parseFloat(match[1]) : null;
-}
-
-// 閾値ベースの分析
-function analyzeByThreshold(value, thresholds, weight) {
-  const scores = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
-
-  // 各設定との距離を計算（値が小さいほど高設定）
-  for (let s = 1; s <= 6; s++) {
-    const diff = value - thresholds[s];
-    // 理論値より良い（数値が小さい）場合にスコア加算
-    if (diff <= 0) {
-      scores[s] = (1 + Math.abs(diff) / thresholds[s] * 2) * weight * 10;
-    } else {
-      // 理論値より悪い場合、差に応じてスコア減算
-      scores[s] = Math.max(0, (1 - diff / thresholds[s]) * weight * 10);
-    }
-  }
-
-  // 最も可能性が高い設定を抽出
-  const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
-  const topScore = sorted[0][1];
-  const likelySettings = sorted.filter(s => s[1] >= topScore * 0.8).map(s => s[0]);
-
-  return {
-    scores,
-    likelySettings: formatLikelySettings(likelySettings),
-    note: ''
-  };
-}
-
-// 設定1,2,5,6のみの機種用分析（ウルトラリミックスなど）
-function analyzeByThresholdFor1256(value, thresholds, weight) {
-  const scores = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
-  let note = '';
-
-  // 設定1,2,5,6のみ
-  const settings = [1, 2, 5, 6];
-
-  for (const s of settings) {
-    const diff = value - thresholds[s];
-    if (diff <= 0) {
-      scores[s] = (1 + Math.abs(diff) / thresholds[s] * 2) * weight * 10;
-    } else {
-      scores[s] = Math.max(0, (1 - diff / thresholds[s]) * weight * 10);
-    }
-  }
-
-  // コメント生成
-  const s6 = thresholds[6];
-  const s1 = thresholds[1];
-  if (value <= s6 * 1.02) {
-    note = '🔥 高設定示唆！';
-  } else if (value >= s1 * 0.98) {
-    note = '低設定寄りの数値';
-  }
-
-  const sorted = Object.entries(scores)
-    .filter(([s]) => settings.includes(parseInt(s)))
-    .sort((a, b) => b[1] - a[1]);
-  const topScore = sorted[0][1];
-  const likelySettings = sorted.filter(s => s[1] >= topScore * 0.8).map(s => s[0]);
-
-  return {
-    scores,
-    likelySettings: formatLikelySettings(likelySettings),
-    note
-  };
-}
-
-// 閾値分析（コメント付き・汎用）
-function analyzeByThresholdWithTips(value, thresholds, weight, machineName) {
-  const scores = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
-  let note = '';
-
-  // 設定6の理論値との比較
-  const setting6Threshold = thresholds[6];
-  const setting1Threshold = thresholds[1];
-
-  // 各設定との距離を計算（値が小さいほど高設定）
-  for (let s = 1; s <= 6; s++) {
-    const diff = value - thresholds[s];
-    if (diff <= 0) {
-      scores[s] = (1 + Math.abs(diff) / thresholds[s] * 2) * weight * 10;
-    } else {
-      scores[s] = Math.max(0, (1 - diff / thresholds[s]) * weight * 10);
-    }
-  }
-
-  // コメント生成
-  if (value <= setting6Threshold * 1.02) {
-    note = '🔥 高設定示唆！';
-  } else if (value >= setting1Threshold * 0.98) {
-    note = '低設定寄りの数値';
-  }
-
-  const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
-  const topScore = sorted[0][1];
-  const likelySettings = sorted.filter(s => s[1] >= topScore * 0.8).map(s => s[0]);
-
-  return {
-    scores,
-    likelySettings: formatLikelySettings(likelySettings),
-    note
-  };
-}
-
-// 共通10枚分析（汎用・閾値渡し）
-function analyzeCommon10(value, thresholds, weight) {
-  const scores = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
-  let note = '';
-
-  const s6 = thresholds[6];
-  const s5 = thresholds[5];
-  const s3 = thresholds[3];
-  const s1 = thresholds[1];
-
-  // 共通10枚は設定差が大きい
-  if (value <= s6 * 1.01) {
-    scores[6] = weight * 15;
-    note = `🔥 設定6濃厚！（理論値1/${s6}）`;
-  } else if (value <= s5 * 1.02) {
-    scores[6] = weight * 10;
-    scores[5] = weight * 12;
-    note = '高設定の挙動';
-  } else if (value <= s3 * 1.02) {
-    scores[5] = weight * 8;
-    scores[4] = weight * 10;
-    scores[3] = weight * 6;
-    note = '中間設定の挙動';
-  } else if (value <= s1 * 0.98) {
-    scores[3] = weight * 8;
-    scores[2] = weight * 10;
-    scores[1] = weight * 6;
-    note = '低〜中設定の挙動';
-  } else {
-    scores[1] = weight * 12;
-    scores[2] = weight * 8;
-    note = '⚠️ 低設定の可能性高い';
-  }
-
-  const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
-  const topScore = sorted[0][1];
-  const likelySettings = sorted.filter(s => s[1] >= topScore * 0.7).map(s => s[0]);
-
-  return {
-    scores,
-    likelySettings: formatLikelySettings(likelySettings),
-    note
-  };
-}
-
-function formatLikelySettings(settings) {
-  if (settings.length === 0) return '-';
-  if (settings.length === 1) return `設定${settings[0]}`;
-  if (settings.length === 2) return `${settings[0]}or${settings[1]}`;
-  return `${settings[0]}〜${settings[settings.length - 1]}`;
-}
-
-function addWeightedScores(total, scores) {
-  for (let s = 1; s <= 6; s++) {
-    total[s] += scores[s] || 0;
-  }
-}
-
-function calculateConfidence(topScore, secondScore, gameCount, dataCount) {
-  let ratio = topScore / (topScore + secondScore);
-
-  // ゲーム数による補正
-  if (gameCount > 0) {
-    if (gameCount < 1000) ratio *= 0.6;
-    else if (gameCount < 2000) ratio *= 0.75;
-    else if (gameCount < 3000) ratio *= 0.85;
-    else if (gameCount < 5000) ratio *= 0.95;
-  }
-
-  // データ数による補正
-  if (dataCount < 3) ratio *= 0.8;
-
-  if (ratio > 0.7) return { label: '◎ 濃厚', class: 'conf-high' };
-  if (ratio > 0.6) return { label: '○ 可能性高', class: 'conf-mid' };
-  if (ratio > 0.5) return { label: '△ やや期待', class: 'conf-low' };
-  return { label: '？ 判別困難', class: 'conf-unknown' };
-}
-
-function generateProComment(sortedSettings, results, gameCount) {
-  const top = sortedSettings[0][0];
-  const topScore = sortedSettings[0][1];
-  const secondScore = sortedSettings[1][1];
-
-  let comment = '';
-
-  // 共通10枚の結果をチェック
-  const common10Result = results.find(r => r.label === '共通10枚');
-  const suikaResult = results.find(r => r.label === 'スイカ確率');
-
-  if (top === '6') {
-    if (common10Result && common10Result.note.includes('濃厚')) {
-      comment = '【プロ目線】共通10枚が設定6水準。粘る価値あり。';
-    } else if (suikaResult && suikaResult.note.includes('設定6')) {
-      comment = '【プロ目線】スイカ確率が優秀。設定6に期待できる。';
-    } else {
-      comment = '【プロ目線】高設定示唆あり。他の要素も確認を。';
-    }
-  } else if (top === '5' || top === '4') {
-    comment = '【プロ目線】中〜高設定の可能性。続行して様子見。';
-  } else if (top === '1' || top === '2') {
-    if (gameCount >= 3000) {
-      comment = '【プロ目線】低設定濃厚。ヤメ時を検討。';
-    } else {
-      comment = '【プロ目線】低設定寄りだが試行不足。もう少し様子見。';
-    }
-  } else {
-    comment = '【プロ目線】判別要素が揃うまで続行推奨。';
-  }
-
-  return comment;
 }
 
 // ========== 保存処理 ==========
