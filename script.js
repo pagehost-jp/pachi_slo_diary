@@ -454,7 +454,7 @@ async function loadMonthlyData() {
   if (entries.length === 0) {
     emptyMessage.style.display = 'block';
     document.getElementById('total-days').textContent = '0日';
-    document.getElementById('monthly-total').textContent = '0枚';
+    document.getElementById('monthly-total').textContent = '¥0';
     document.getElementById('monthly-total').className = 'summary-value';
     return;
   }
@@ -468,11 +468,13 @@ async function loadMonthlyData() {
     return b.day - a.day;
   });
 
-  let totalBalance = 0;
+  let totalYenBalance = 0;
 
   entries.forEach(entry => {
     const balance = (entry.out || 0) - (entry.in || 0);
-    totalBalance += balance;
+    const rate = entry.rate || 0;
+    const yenBalance = Math.round(balance * rate);
+    totalYenBalance += yenBalance;
 
     const item = document.createElement('div');
     item.className = 'daily-item';
@@ -482,14 +484,19 @@ async function loadMonthlyData() {
       ? entry.images[0]
       : 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Crect fill="%230f3460" width="100" height="100"/%3E%3Ctext x="50" y="55" text-anchor="middle" fill="%23a0a0a0" font-size="12"%3E-%3C/text%3E%3C/svg%3E';
 
+    // レートがある場合は円表示、なければ枚表示
+    const displayBalance = rate > 0
+      ? `${yenBalance >= 0 ? '+' : ''}¥${yenBalance.toLocaleString()}`
+      : `${balance >= 0 ? '+' : ''}${balance.toLocaleString()}枚`;
+
     item.innerHTML = `
       <img class="daily-thumb" src="${thumbSrc}" alt="">
       <div class="daily-info">
         <p class="daily-date">${entry.month}/${entry.day}</p>
         <p class="daily-machine">${entry.machine || '未入力'}</p>
       </div>
-      <span class="daily-balance ${balance >= 0 ? 'profit' : 'loss'}">
-        ${balance >= 0 ? '+' : ''}${balance.toLocaleString()}枚
+      <span class="daily-balance ${yenBalance >= 0 ? 'profit' : 'loss'}">
+        ${displayBalance}
       </span>
     `;
 
@@ -499,8 +506,8 @@ async function loadMonthlyData() {
   // サマリー更新
   document.getElementById('total-days').textContent = `${entries.length}日`;
   const totalEl = document.getElementById('monthly-total');
-  totalEl.textContent = `${totalBalance >= 0 ? '+' : ''}${totalBalance.toLocaleString()}枚`;
-  totalEl.className = `summary-value ${totalBalance >= 0 ? 'profit' : 'loss'}`;
+  totalEl.textContent = `${totalYenBalance >= 0 ? '+' : ''}¥${totalYenBalance.toLocaleString()}`;
+  totalEl.className = `summary-value ${totalYenBalance >= 0 ? 'profit' : 'loss'}`;
 
   // カレンダーも更新
   renderCalendar(entries);
