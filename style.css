@@ -191,6 +191,16 @@ body {
   height: 20px;
 }
 
+.sync-buttons {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.sync-buttons .btn {
+  flex: 1;
+}
+
 /* ========== Modal ========== */
 .modal {
   position: fixed;

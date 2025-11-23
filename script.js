@@ -17,6 +17,7 @@ let firebaseApp = null;
 let auth = null;
 let firestoreDb = null;
 let currentUser = null;
+let unsubscribeSync = null; // リアルタイム同期のリスナー解除用
 
 function initFirebase() {
   if (firebaseConfig.apiKey === "YOUR_API_KEY") {
@@ -43,8 +44,70 @@ async function handleAuthStateChanged(user) {
   updateUserUI();
 
   if (user) {
-    // ログイン時：クラウドからデータを同期
+    // ログイン時：クラウドからデータを同期してリアルタイム同期開始
     await syncFromCloud();
+    startRealtimeSync();
+  } else {
+    // ログアウト時：リアルタイム同期を停止
+    stopRealtimeSync();
+  }
+}
+
+// リアルタイム同期開始
+function startRealtimeSync() {
+  if (!currentUser || !firestoreDb || unsubscribeSync) return;
+
+  const userEntriesRef = firestoreDb
+    .collection('users')
+    .doc(currentUser.uid)
+    .collection('entries');
+
+  unsubscribeSync = userEntriesRef.onSnapshot((snapshot) => {
+    snapshot.docChanges().forEach(async (change) => {
+      if (change.type === 'added' || change.type === 'modified') {
+        const cloudEntry = change.doc.data();
+        cloudEntry.cloudId = change.doc.id;
+
+        // ローカルに同じ日付のエントリーがあるかチェック
+        const localEntries = await getEntriesByMonth(cloudEntry.year, cloudEntry.month);
+        const existingEntry = localEntries.find(e => e.day === cloudEntry.day);
+
+        if (existingEntry) {
+          const cloudUpdated = cloudEntry.updatedAt?.toDate?.() || new Date(0);
+          const localUpdated = existingEntry.updatedAt ? new Date(existingEntry.updatedAt) : new Date(0);
+
+          if (cloudUpdated > localUpdated) {
+            cloudEntry.id = existingEntry.id;
+            await saveEntry(cloudEntry, false);
+          }
+        } else {
+          await saveEntry(cloudEntry, false);
+        }
+      } else if (change.type === 'removed') {
+        // クラウドで削除された場合、ローカルも削除
+        const cloudEntry = change.doc.data();
+        const localEntries = await getEntriesByMonth(cloudEntry.year, cloudEntry.month);
+        const existingEntry = localEntries.find(e => e.day === cloudEntry.day);
+        if (existingEntry) {
+          await deleteEntry(existingEntry.id, false);
+        }
+      }
+    });
+    // 画面を更新
+    loadMonthlyData();
+  }, (error) => {
+    console.error('リアルタイム同期エラー:', error);
+  });
+
+  console.log('リアルタイム同期開始');
+}
+
+// リアルタイム同期停止
+function stopRealtimeSync() {
+  if (unsubscribeSync) {
+    unsubscribeSync();
+    unsubscribeSync = null;
+    console.log('リアルタイム同期停止');
   }
 }
 
@@ -53,7 +116,7 @@ function updateUserUI() {
   const userBtn = document.getElementById('btn-user');
   const userName = document.getElementById('user-name');
   const loginBtn = document.getElementById('btn-google-login');
-  const logoutBtn = document.getElementById('btn-logout');
+  const syncButtons = document.getElementById('sync-buttons');
   const syncText = document.getElementById('sync-text');
   const syncIcon = document.querySelector('.sync-icon');
 
@@ -62,9 +125,9 @@ function updateUserUI() {
     userName.textContent = currentUser.displayName?.split(' ')[0] || 'ユーザー';
     document.querySelector('.user-icon').textContent = '✓';
     if (loginBtn) loginBtn.style.display = 'none';
-    if (logoutBtn) logoutBtn.style.display = 'block';
+    if (syncButtons) syncButtons.style.display = 'flex';
     if (syncText) {
-      syncText.textContent = '同期済み';
+      syncText.textContent = 'リアルタイム同期中';
       syncText.classList.add('synced');
     }
     if (syncIcon) syncIcon.textContent = '✅';
@@ -73,7 +136,7 @@ function updateUserUI() {
     userName.textContent = 'ログイン';
     document.querySelector('.user-icon').textContent = '👤';
     if (loginBtn) loginBtn.style.display = 'block';
-    if (logoutBtn) logoutBtn.style.display = 'none';
+    if (syncButtons) syncButtons.style.display = 'none';
     if (syncText) {
       syncText.textContent = '未ログイン';
       syncText.classList.remove('synced');
@@ -1682,6 +1745,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   document.getElementById('btn-google-login').addEventListener('click', loginWithGoogle);
   document.getElementById('btn-logout').addEventListener('click', logout);
+  document.getElementById('btn-manual-sync').addEventListener('click', async () => {
+    const btn = document.getElementById('btn-manual-sync');
+    btn.disabled = true;
+    btn.textContent = '同期中...';
+    try {
+      await syncFromCloud();
+      await syncToCloud();
+      showToast('同期完了しました');
+    } catch (error) {
+      showToast('同期に失敗しました');
+    }
+    btn.disabled = false;
+    btn.textContent = '🔄 今すぐ同期';
+  });
 
   // バックアップ機能（要素が存在する場合のみ）
   const exportBtn = document.getElementById('btn-export');

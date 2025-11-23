@@ -57,8 +57,11 @@
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" class="google-icon">
             Googleでログイン
           </button>
-          <button class="btn btn-secondary" id="btn-logout" style="display: none;">ログアウト</button>
-          <p class="hint">ログインすると自動でクラウドにバックアップされます</p>
+          <div class="sync-buttons" id="sync-buttons" style="display: none;">
+            <button class="btn btn-primary" id="btn-manual-sync">🔄 今すぐ同期</button>
+            <button class="btn btn-secondary" id="btn-logout">ログアウト</button>
+          </div>
+          <p class="hint">ログインするとリアルタイムでクラウドに同期されます</p>
         </div>
 
         <div class="modal-buttons">
