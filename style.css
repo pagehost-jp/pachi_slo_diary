@@ -1188,7 +1188,7 @@ body {
   margin-bottom: 20px;
 }
 
-.balance-main, .balance-hourly {
+.balance-main, .balance-yen, .balance-hourly {
   text-align: center;
 }
 
