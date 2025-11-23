@@ -622,6 +622,7 @@ body {
 .calendar-day.empty {
   background: transparent;
   cursor: default;
+  border: 1px solid var(--border);
 }
 
 .calendar-day.empty:hover {
@@ -974,6 +975,20 @@ body {
 .unit {
   color: var(--text-sub);
   font-size: 0.9rem;
+}
+
+.hourly-rate {
+  font-size: 0.85rem;
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
+.hourly-rate.profit {
+  color: var(--profit);
+}
+
+.hourly-rate.loss {
+  color: var(--loss);
 }
 
 .input-textarea {

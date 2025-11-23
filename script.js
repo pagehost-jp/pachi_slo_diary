@@ -712,12 +712,7 @@ async function loadEntry(id) {
   document.getElementById('input-in').value = entry.in || '';
   document.getElementById('input-out').value = entry.out || '';
   // 稼働時間（時間と分に分解）
-  const hoursUnknown = entry.hoursUnknown || false;
-  document.getElementById('hours-unknown').checked = hoursUnknown;
-  document.getElementById('input-hours').disabled = hoursUnknown;
-  document.getElementById('input-minutes').disabled = hoursUnknown;
-
-  if (!hoursUnknown && entry.hours) {
+  if (entry.hours) {
     const totalMinutes = entry.hours * 60;
     const hours = Math.floor(totalMinutes / 60) || 1;
     const minutes = Math.round((totalMinutes % 60) / 10) * 10;
@@ -765,9 +760,6 @@ function clearEntryForm() {
   document.getElementById('input-out').value = '';
   document.getElementById('input-hours').value = '1';
   document.getElementById('input-minutes').value = '0';
-  document.getElementById('hours-unknown').checked = false;
-  document.getElementById('input-hours').disabled = false;
-  document.getElementById('input-minutes').disabled = false;
   document.getElementById('memo').value = '';
   document.getElementById('blog-content').value = '';
   document.getElementById('blog-output').style.display = 'none';
@@ -789,6 +781,28 @@ function updateBalance() {
   const balanceEl = document.getElementById('balance-value');
   balanceEl.textContent = `${balance >= 0 ? '+' : ''}${balance.toLocaleString()}枚`;
   balanceEl.className = `balance-value ${balance >= 0 ? 'profit' : 'loss'}`;
+
+  // 時給表示
+  updateHourlyRate();
+}
+
+function updateHourlyRate() {
+  const inValue = parseInt(document.getElementById('input-in').value) || 0;
+  const outValue = parseInt(document.getElementById('input-out').value) || 0;
+  const balance = outValue - inValue;
+  const hours = parseInt(document.getElementById('input-hours').value) || 1;
+  const minutes = parseInt(document.getElementById('input-minutes').value) || 0;
+  const totalHours = hours + minutes / 60;
+
+  const hourlyRate = Math.round(balance / totalHours);
+  const hourlyRateEl = document.getElementById('hourly-rate');
+
+  if (balance !== 0) {
+    hourlyRateEl.textContent = `（時給 ${hourlyRate >= 0 ? '+' : ''}${hourlyRate.toLocaleString()}枚）`;
+    hourlyRateEl.className = `hourly-rate ${hourlyRate >= 0 ? 'profit' : 'loss'}`;
+  } else {
+    hourlyRateEl.textContent = '';
+  }
 }
 
 // ========== 画像処理（ドロップゾーン） ==========
@@ -1162,8 +1176,7 @@ async function saveCurrentEntry() {
     machine: document.getElementById('machine-name').value,
     in: parseInt(document.getElementById('input-in').value) || 0,
     out: parseInt(document.getElementById('input-out').value) || 0,
-    hours: document.getElementById('hours-unknown').checked ? null : (parseInt(document.getElementById('input-hours').value) || 1) + (parseInt(document.getElementById('input-minutes').value) || 0) / 60,
-    hoursUnknown: document.getElementById('hours-unknown').checked,
+    hours: (parseInt(document.getElementById('input-hours').value) || 1) + (parseInt(document.getElementById('input-minutes').value) || 0) / 60,
     memo: document.getElementById('memo').value,
     blog: document.getElementById('blog-content').value,
     images: getValidImages(),
@@ -1981,12 +1994,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('input-in').addEventListener('input', updateBalance);
   document.getElementById('input-out').addEventListener('input', updateBalance);
 
-  // 稼働時間不明チェックボックス
-  document.getElementById('hours-unknown').addEventListener('change', (e) => {
-    document.getElementById('input-hours').disabled = e.target.checked;
-    document.getElementById('input-minutes').disabled = e.target.checked;
-    updateBalance();
-  });
+  // 稼働時間変更時の時給更新
+  document.getElementById('input-hours').addEventListener('change', updateHourlyRate);
+  document.getElementById('input-minutes').addEventListener('change', updateHourlyRate);
 
   // 機種名入力時の統計表示
   const machineInput = document.getElementById('machine-name');
