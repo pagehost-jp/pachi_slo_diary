@@ -755,6 +755,11 @@ body {
   align-items: center;
   gap: 12px;
   margin-bottom: 20px;
+  position: sticky;
+  top: 0;
+  background: var(--bg-main);
+  padding: 12px 0;
+  z-index: 100;
 }
 
 .header-buttons {
