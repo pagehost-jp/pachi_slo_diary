@@ -673,6 +673,133 @@ body {
   box-shadow: 0 0 0 2px var(--accent);
 }
 
+/* 同じ日に複数件ある場合のバッジ */
+.day-count {
+  background: var(--accent);
+  color: white;
+  font-size: 0.55rem;
+  padding: 1px 4px;
+  border-radius: 8px;
+  margin-left: 2px;
+  vertical-align: top;
+}
+
+/* 日別エントリー選択ポップアップ */
+.day-entries-popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.day-entries-popup .popup-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.day-entries-popup .popup-content {
+  position: relative;
+  background: var(--bg-card);
+  border-radius: 16px;
+  padding: 20px;
+  width: 90%;
+  max-width: 350px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.day-entries-popup .popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.day-entries-popup .popup-header h4 {
+  margin: 0;
+  color: var(--text-main);
+  font-size: 1.1rem;
+}
+
+.day-entries-popup .popup-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--bg-input);
+  border: none;
+  color: var(--text-main);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.day-entries-popup .popup-close:hover {
+  background: var(--loss);
+}
+
+.day-entries-popup .popup-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.day-entries-popup .popup-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: var(--bg-input);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.day-entries-popup .popup-item:hover {
+  border: 1px solid var(--accent);
+}
+
+.day-entries-popup .popup-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.day-entries-popup .popup-item-hall {
+  font-size: 0.8rem;
+  color: var(--text-sub);
+}
+
+.day-entries-popup .popup-item-machine {
+  font-size: 0.95rem;
+  color: var(--text-main);
+}
+
+.day-entries-popup .popup-item-balance {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.day-entries-popup .popup-item-balance.profit {
+  color: var(--profit);
+}
+
+.day-entries-popup .popup-item-balance.loss {
+  color: var(--loss);
+}
+
+.day-entries-popup .popup-add-btn {
+  width: 100%;
+}
+
 /* ========== Daily List ========== */
 .daily-list {
   display: flex;

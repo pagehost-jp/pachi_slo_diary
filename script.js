@@ -632,11 +632,14 @@ function renderCalendar(entries) {
   const daysInMonth = lastDay.getDate();
   const startDayOfWeek = firstDay.getDay();
 
-  // エントリーを日付でマップ
+  // エントリーを日付でマップ（同じ日に複数対応）
   const entryMap = {};
   entries.forEach(entry => {
     if (entry.month === currentMonth) {
-      entryMap[entry.day] = entry;
+      if (!entryMap[entry.day]) {
+        entryMap[entry.day] = [];
+      }
+      entryMap[entry.day].push(entry);
     }
   });
 
@@ -655,18 +658,26 @@ function renderCalendar(entries) {
     const cell = document.createElement('div');
     cell.className = 'calendar-day';
 
-    const entry = entryMap[day];
-    if (entry) {
-      const balance = (entry.out || 0) - (entry.in || 0);
+    const dayEntries = entryMap[day];
+    if (dayEntries && dayEntries.length > 0) {
+      // 合計収支を計算
+      const totalBalance = dayEntries.reduce((sum, e) => sum + ((e.out || 0) - (e.in || 0)), 0);
       cell.classList.add('has-entry');
-      cell.classList.add(balance >= 0 ? 'profit' : 'loss');
+      cell.classList.add(totalBalance >= 0 ? 'profit' : 'loss');
+
+      // 複数件ある場合はバッジ表示
+      const countBadge = dayEntries.length > 1 ? `<span class="day-count">${dayEntries.length}</span>` : '';
       cell.innerHTML = `
-        <span class="day-number">${day}</span>
-        <span class="day-balance ${balance >= 0 ? 'profit' : 'loss'}">${balance >= 0 ? '+' : ''}${(balance / 1000).toFixed(0)}k</span>
+        <span class="day-number">${day}${countBadge}</span>
+        <span class="day-balance ${totalBalance >= 0 ? 'profit' : 'loss'}">${totalBalance >= 0 ? '+' : ''}${(totalBalance / 1000).toFixed(0)}k</span>
       `;
       cell.onclick = () => {
         allowEntryView = true;
-        showEntryView(entry.id);
+        if (dayEntries.length === 1) {
+          showEntryView(dayEntries[0].id);
+        } else {
+          showDayEntriesPopup(dayEntries, currentYear, currentMonth, day);
+        }
       };
     } else {
       cell.innerHTML = `<span class="day-number">${day}</span>`;
@@ -682,6 +693,59 @@ function renderCalendar(entries) {
 
     grid.appendChild(cell);
   }
+}
+
+// 同じ日の複数エントリを選択するポップアップ
+function showDayEntriesPopup(entries, year, month, day) {
+  // 既存のポップアップがあれば削除
+  const existingPopup = document.querySelector('.day-entries-popup');
+  if (existingPopup) existingPopup.remove();
+
+  const popup = document.createElement('div');
+  popup.className = 'day-entries-popup';
+  popup.innerHTML = `
+    <div class="popup-overlay"></div>
+    <div class="popup-content">
+      <div class="popup-header">
+        <h4>${month}月${day}日の記録</h4>
+        <button class="popup-close">×</button>
+      </div>
+      <div class="popup-list">
+        ${entries.map(entry => {
+          const balance = (entry.out || 0) - (entry.in || 0);
+          const balanceClass = balance >= 0 ? 'profit' : 'loss';
+          return `
+            <div class="popup-item" data-id="${entry.id}">
+              <div class="popup-item-info">
+                <span class="popup-item-hall">${entry.hall || '店舗未入力'}</span>
+                <span class="popup-item-machine">${entry.machine || '機種未入力'}</span>
+              </div>
+              <span class="popup-item-balance ${balanceClass}">${balance >= 0 ? '+' : ''}${balance.toLocaleString()}枚</span>
+            </div>
+          `;
+        }).join('')}
+      </div>
+      <button class="btn btn-secondary popup-add-btn">+ この日に追加</button>
+    </div>
+  `;
+
+  document.body.appendChild(popup);
+
+  // イベント設定
+  popup.querySelector('.popup-overlay').onclick = () => popup.remove();
+  popup.querySelector('.popup-close').onclick = () => popup.remove();
+  popup.querySelectorAll('.popup-item').forEach(item => {
+    item.onclick = () => {
+      popup.remove();
+      showEntryView(item.dataset.id);
+    };
+  });
+  popup.querySelector('.popup-add-btn').onclick = () => {
+    popup.remove();
+    showEntryView(null);
+    document.getElementById('entry-date').textContent = `${year}年${month}月${day}日`;
+    document.getElementById('date-input').value = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  };
 }
 
 // 特定の日付でエントリーを開く
