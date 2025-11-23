@@ -946,15 +946,21 @@ async function performOcr() {
     const prompt = `この画像はパチスロの実戦データ（Qマイスロなど）のスクリーンショットです。
 画像に表示されているデータをすべて読み取ってください。
 
+【機種名の判別 - 最重要】
+- 画像の上部・ヘッダー部分に表示されている機種名を必ず正確に読み取ってください
+- 画像に「ウルトラリミックス」と書いてあれば「ウルトラリミックス」
+- 画像に「ディスクアップ2」と書いてあれば「ディスクアップ2」
+- 絶対に推測や勝手な判断をしないでください。画像に書いてある文字をそのまま使ってください
+
 【重要】
-- 機種は自動判別してください（ディスクアップ2、ウルトラリミックス、その他なんでもOK）
 - 複数枚の画像がある場合、重複データは1つにまとめてください
 - 画像に表示されている項目をすべて読み取ってください
+- 「器種」「機種」という項目は除外（machine_nameで既に出力するため）
 
 【出力形式】
 以下のJSON形式で返してください:
 {
-  "machine_name": "機種名（画像から判別）",
+  "machine_name": "画像から読み取った機種名",
   "items": [
     {"label": "項目名", "value": "値", "category": "カテゴリ名"},
     {"label": "項目名", "value": "値", "category": "カテゴリ名"}
@@ -1005,19 +1011,19 @@ function displayOcrResult(data) {
 
   // 新フォーマット（items配列）の場合
   if (data.items && Array.isArray(data.items)) {
-    // 機種名があれば表示
+    // 機種名があれば表示＆自動入力
     if (data.machine_name) {
       const machineHeader = document.createElement('div');
       machineHeader.className = 'ocr-category-header';
       machineHeader.textContent = `機種: ${data.machine_name}`;
       dataGrid.appendChild(machineHeader);
 
-      // 機種名を自動入力
+      // 機種名を予測入力（常に上書き）
       const machineInput = document.getElementById('machine-name');
-      if (!machineInput.value) {
-        machineInput.value = data.machine_name;
-        document.getElementById('btn-clear-machine').style.display = 'flex';
-      }
+      machineInput.value = data.machine_name;
+      document.getElementById('btn-clear-machine').style.display = 'flex';
+      showMachineStats(data.machine_name);
+      showToast(`機種「${data.machine_name}」を予測入力しました`);
     }
 
     // カテゴリごとにグループ化
