@@ -1,10 +1,6 @@
 // ========================================
 // pachi_slo_diary - Main Script
-// Version: 2025-11-23-v8 ← この数字で最新か確認できる
 // ========================================
-
-// ★起動時にバージョン表示（デバッグ用）
-console.log('[MAXIMA] Script loaded: v2025-11-23-v8');
 
 // ========== Firebase設定 ==========
 const firebaseConfig = {
@@ -79,8 +75,7 @@ async function handleAuthStateChanged(user) {
     await syncFromCloud();
     startRealtimeSync();
 
-    // ★ログイン完了後は必ず月別一覧を表示（自動遷移対策）
-    console.log('[DEBUG] Auth complete, forcing showMonthlyView');
+    // ログイン完了後は必ず月別一覧を表示
     showMonthlyView();
   } else {
     // ログアウト時：リアルタイム同期を停止
@@ -462,7 +457,6 @@ async function getAllEntries() {
 
 // ========== 画面表示 ==========
 function showMonthlyView() {
-  console.log('[DEBUG] showMonthlyView called', new Error().stack);
   document.getElementById('monthly-view').style.display = 'block';
   document.getElementById('entry-view').style.display = 'none';
   document.getElementById('btn-back-header').style.display = 'none';
@@ -472,12 +466,8 @@ function showMonthlyView() {
 }
 
 function showEntryView(entryId = null) {
-  console.log('[DEBUG] showEntryView called, entryId:', entryId, 'allowEntryView:', allowEntryView);
-  console.log('[DEBUG] Stack:', new Error().stack);
-
-  // 起動直後の自動遷移をブロック
+  // 起動直後の自動遷移をブロック（安全装置）
   if (!allowEntryView) {
-    console.log('[DEBUG] showEntryView BLOCKED - not allowed yet');
     return;
   }
 
@@ -1915,7 +1905,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 3秒後にエントリー画面への遷移を許可（初期ロード・同期完了を待つ）
   setTimeout(() => {
     allowEntryView = true;
-    console.log('[DEBUG] allowEntryView enabled after timeout');
   }, 3000);
 
   // 年移動
@@ -2254,15 +2243,12 @@ async function importData(file) {
 // グローバル関数（onclick用）
 window.removeImage = removeImage;
 
-// ========== Service Worker登録（一時的に無効化） ==========
-// PWAデバッグのため、SWを解除してから無効化
+// ========== Service Worker ==========
+// オフライン機能は使わないため、SWは無効化
 if ('serviceWorker' in navigator) {
-  // 既存のSWをすべて解除
   navigator.serviceWorker.getRegistrations().then((registrations) => {
     for (const registration of registrations) {
       registration.unregister();
-      console.log('[SW] Unregistered:', registration.scope);
     }
   });
 }
-// TODO: 問題解決後にSW登録を復活させる
