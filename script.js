@@ -19,7 +19,7 @@ let firestoreDb = null;
 let currentUser = null;
 let unsubscribeSync = null; // リアルタイム同期のリスナー解除用
 
-function initFirebase() {
+async function initFirebase() {
   if (firebaseConfig.apiKey === "YOUR_API_KEY") {
     console.log('Firebase未設定 - クラウド同期は無効');
     return false;
@@ -28,6 +28,9 @@ function initFirebase() {
     firebaseApp = firebase.initializeApp(firebaseConfig);
     auth = firebase.auth();
     firestoreDb = firebase.firestore();
+
+    // 認証の永続性をLOCALに設定（PWAでも維持される）
+    await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
     // 認証状態の監視
     auth.onAuthStateChanged(handleAuthStateChanged);
@@ -44,7 +47,21 @@ async function handleAuthStateChanged(user) {
   updateUserUI();
 
   if (user) {
-    // ログイン時：クラウドからデータを同期してリアルタイム同期開始
+    // ログイン時：クラウドからAPIキーと設定を取得
+    try {
+      const userDoc = await firestoreDb.collection('users').doc(user.uid).get();
+      if (userDoc.exists) {
+        const userData = userDoc.data();
+        if (userData.apiKey && !geminiApiKey) {
+          geminiApiKey = userData.apiKey;
+          localStorage.setItem('gemini_api_key', userData.apiKey);
+          document.getElementById('api-key-input').value = userData.apiKey;
+        }
+      }
+    } catch (e) {
+      console.error('ユーザー設定の取得エラー:', e);
+    }
+    // クラウドからデータを同期してリアルタイム同期開始
     await syncFromCloud();
     startRealtimeSync();
   } else {
@@ -1604,7 +1621,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await initDB();
 
   // Firebase初期化
-  initFirebase();
+  await initFirebase();
 
   // 起動時に今日のエントリーを直接開く
   await openTodaysEntry();
@@ -1801,12 +1818,22 @@ function closeSettings() {
   document.getElementById('settings-modal').style.display = 'none';
 }
 
-function saveSettings() {
+async function saveSettings() {
   const apiKey = document.getElementById('api-key-input').value.trim();
 
   if (apiKey) {
     geminiApiKey = apiKey;
     localStorage.setItem('gemini_api_key', apiKey);
+    // ログイン中ならFirestoreにも保存
+    if (currentUser && firestoreDb) {
+      try {
+        await firestoreDb.collection('users').doc(currentUser.uid).set({
+          apiKey: apiKey
+        }, { merge: true });
+      } catch (e) {
+        console.error('APIキーのクラウド保存エラー:', e);
+      }
+    }
     showToast('設定を保存しました');
     document.getElementById('settings-modal').style.display = 'none';
   } else {
