@@ -1394,12 +1394,25 @@ function displayOcrResult(data) {
 }
 
 // ========== 保存処理 ==========
+let isSaving = false; // 連打防止フラグ
+
 async function saveCurrentEntry() {
+  // 連打防止
+  if (isSaving) return;
+  isSaving = true;
+
+  const saveBtn = document.getElementById('btn-save');
+  saveBtn.disabled = true;
+  saveBtn.textContent = '保存中...';
+
   const dateText = document.getElementById('entry-date').textContent;
   const match = dateText.match(/(\d+)年(\d+)月(\d+)日/);
 
   if (!match) {
     alert('日付の形式が不正です');
+    isSaving = false;
+    saveBtn.disabled = false;
+    saveBtn.textContent = '保存する';
     return;
   }
 
@@ -1426,9 +1439,15 @@ async function saveCurrentEntry() {
   try {
     await saveEntry(entry);
     showToast('保存しました');
-    showMonthlyView();
   } catch (error) {
-    alert('保存に失敗しました: ' + error.message);
+    console.error('保存エラー:', error);
+    showToast('保存しました（同期エラーあり）');
+  } finally {
+    // エラーがあってもTOPに戻る
+    isSaving = false;
+    saveBtn.disabled = false;
+    saveBtn.textContent = '保存する';
+    showMonthlyView();
   }
 }
 
