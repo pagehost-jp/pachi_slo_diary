@@ -84,6 +84,8 @@
 
     <!-- ========== 月別一覧画面 ========== -->
     <section id="monthly-view" class="section">
+      <!-- 固定ヘッダー部分 -->
+      <div class="monthly-header" id="monthly-header">
       <div class="page-title-row">
         <h2 class="page-title">記録一覧</h2>
         <button class="btn btn-primary btn-add-top" id="btn-add-entry">+ 収支を入力</button>
@@ -154,7 +156,10 @@
         <button class="toggle-btn active" id="btn-list-view">履歴</button>
         <button class="toggle-btn" id="btn-calendar-view">カレンダー</button>
       </div>
+      </div><!-- /monthly-header -->
 
+      <!-- スクロール可能なコンテンツエリア -->
+      <div class="monthly-content" id="monthly-content">
       <!-- カレンダー表示 -->
       <div class="calendar-view" id="calendar-view" style="display: none;">
         <div class="calendar-header">
@@ -170,6 +175,7 @@
         <!-- JSで動的に追加 -->
         <p class="empty-message" id="empty-message">この月のデータはありません</p>
       </div>
+      </div><!-- /monthly-content -->
 
       <!-- 選択モード用削除バー -->
       <div class="selection-bar" id="selection-bar" style="display: none;">
