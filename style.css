@@ -1919,3 +1919,46 @@ body {
 .btn-link-danger:hover {
   color: var(--loss);
 }
+
+/* 選択モード */
+.selection-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--bg-card);
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+}
+
+.selection-count {
+  color: var(--text-main);
+  font-weight: bold;
+}
+
+.daily-item.selection-mode {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.selection-checkbox {
+  width: 24px;
+  height: 24px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.daily-item.selected {
+  background: rgba(233, 69, 96, 0.2);
+  border-color: var(--accent);
+}
+
+.daily-list.selection-mode {
+  padding-bottom: 80px;
+}

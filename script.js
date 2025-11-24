@@ -513,6 +513,8 @@ let currentEntryId = null;
 let uploadedImages = [];
 let currentOcrData = null;
 let allowEntryView = false; // 起動直後はエントリー画面への遷移をブロック
+let isSelectionMode = false; // 選択モード
+let selectedIds = new Set(); // 選択されたエントリーID
 
 // ========== IndexedDB初期化 ==========
 async function initDB() {
@@ -750,9 +752,26 @@ async function loadMonthlyData() {
 
     const item = document.createElement('div');
     item.className = 'daily-item';
-    item.onclick = () => {
-      allowEntryView = true;
-      showEntryView(entry.id);
+    item.dataset.id = entry.id;
+
+    // 長押し検出用
+    let pressTimer = null;
+    item.addEventListener('touchstart', (e) => {
+      pressTimer = setTimeout(() => {
+        enterSelectionMode(entry.id);
+      }, 500);
+    });
+    item.addEventListener('touchend', () => clearTimeout(pressTimer));
+    item.addEventListener('touchmove', () => clearTimeout(pressTimer));
+
+    item.onclick = (e) => {
+      if (isSelectionMode) {
+        e.preventDefault();
+        toggleItemSelection(entry.id);
+      } else {
+        allowEntryView = true;
+        showEntryView(entry.id);
+      }
     };
 
     const thumbSrc = entry.images && entry.images.length > 0
@@ -762,6 +781,7 @@ async function loadMonthlyData() {
     const displayBalance = `${balance >= 0 ? '+' : ''}${balance.toLocaleString()}枚`;
 
     item.innerHTML = `
+      <input type="checkbox" class="selection-checkbox" style="display: none;">
       <img class="daily-thumb" src="${thumbSrc}" alt="">
       <div class="daily-info">
         <p class="daily-date">${entry.month}/${entry.day}</p>
@@ -784,6 +804,89 @@ async function loadMonthlyData() {
 
   // カレンダーも更新
   renderCalendar(entries);
+}
+
+// ========== 選択モード ==========
+function enterSelectionMode(firstId) {
+  isSelectionMode = true;
+  selectedIds.clear();
+  selectedIds.add(firstId);
+
+  const dailyList = document.getElementById('daily-list');
+  dailyList.classList.add('selection-mode');
+
+  // 全アイテムにチェックボックス表示
+  dailyList.querySelectorAll('.daily-item').forEach(item => {
+    item.classList.add('selection-mode');
+    const checkbox = item.querySelector('.selection-checkbox');
+    if (checkbox) {
+      checkbox.style.display = 'block';
+      checkbox.checked = item.dataset.id == firstId;
+      if (item.dataset.id == firstId) {
+        item.classList.add('selected');
+      }
+    }
+  });
+
+  document.getElementById('selection-bar').style.display = 'flex';
+  updateSelectionCount();
+}
+
+function exitSelectionMode() {
+  isSelectionMode = false;
+  selectedIds.clear();
+
+  const dailyList = document.getElementById('daily-list');
+  dailyList.classList.remove('selection-mode');
+
+  dailyList.querySelectorAll('.daily-item').forEach(item => {
+    item.classList.remove('selection-mode', 'selected');
+    const checkbox = item.querySelector('.selection-checkbox');
+    if (checkbox) {
+      checkbox.style.display = 'none';
+      checkbox.checked = false;
+    }
+  });
+
+  document.getElementById('selection-bar').style.display = 'none';
+}
+
+function toggleItemSelection(id) {
+  const item = document.querySelector(`.daily-item[data-id="${id}"]`);
+  const checkbox = item?.querySelector('.selection-checkbox');
+
+  if (selectedIds.has(id)) {
+    selectedIds.delete(id);
+    item?.classList.remove('selected');
+    if (checkbox) checkbox.checked = false;
+  } else {
+    selectedIds.add(id);
+    item?.classList.add('selected');
+    if (checkbox) checkbox.checked = true;
+  }
+
+  updateSelectionCount();
+}
+
+function updateSelectionCount() {
+  document.getElementById('selection-count').textContent = `${selectedIds.size}件選択中`;
+}
+
+async function deleteSelectedEntries() {
+  if (selectedIds.size === 0) return;
+
+  if (!confirm(`${selectedIds.size}件のデータを削除しますか？`)) return;
+
+  try {
+    for (const id of selectedIds) {
+      await deleteEntry(id);
+    }
+    showToast(`${selectedIds.size}件削除しました`);
+    exitSelectionMode();
+    showMonthlyView();
+  } catch (error) {
+    alert('削除に失敗しました: ' + error.message);
+  }
 }
 
 // カレンダー表示
@@ -2294,6 +2397,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       showChart(currentChartType, currentChartPeriod);
     });
   });
+
+  // 選択モード
+  document.getElementById('btn-cancel-selection').addEventListener('click', exitSelectionMode);
+  document.getElementById('btn-delete-selected').addEventListener('click', deleteSelectedEntries);
 
   // エントリー操作（ユーザー操作時は即座に許可）
   document.getElementById('btn-add-entry').addEventListener('click', () => {
