@@ -1898,3 +1898,24 @@ body {
     transform: translateX(-50%) translateY(0);
   }
 }
+
+/* 削除リンク（画面下部） */
+.delete-entry-link {
+  text-align: center;
+  margin-top: 32px;
+  padding-bottom: 40px;
+}
+
+.btn-link-danger {
+  background: none;
+  border: none;
+  color: var(--text-sub);
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 8px 16px;
+  text-decoration: underline;
+}
+
+.btn-link-danger:hover {
+  color: var(--loss);
+}

@@ -1435,10 +1435,11 @@ async function saveCurrentEntry() {
 async function deleteCurrentEntry() {
   if (!currentEntryId) return;
 
-  if (!confirm('この記録を削除しますか？')) return;
+  if (!confirm('このエントリーを削除しますか？')) return;
 
   try {
     await deleteEntry(currentEntryId);
+    showToast('削除しました');
     showMonthlyView();
   } catch (error) {
     alert('削除に失敗しました: ' + error.message);
