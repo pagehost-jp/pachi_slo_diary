@@ -327,44 +327,33 @@ body {
 
 /* ========== Year Selector ========== */
 .year-selector {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 8px 16px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 10px;
+  gap: 4px;
+  padding: 4px 10px;
+  background: var(--bg-input);
+  border-radius: 6px;
   margin-bottom: 12px;
+  font-size: 0.85rem;
 }
 
 .current-year {
-  font-size: 1rem;
-  font-weight: 700;
-  color: white;
-  min-width: 80px;
-  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-main);
+  cursor: pointer;
 }
 
 .btn-year-nav {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  color: white;
-  font-size: 0.9rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  padding: 2px 6px !important;
+  min-width: auto !important;
+  font-size: 0.75rem !important;
+  background: transparent !important;
+  color: var(--text-sub) !important;
 }
 
 .btn-year-nav:hover {
-  background: rgba(255, 255, 255, 0.3);
-  border-color: white;
+  color: var(--accent) !important;
 }
 
 /* ========== Month Buttons ========== */
