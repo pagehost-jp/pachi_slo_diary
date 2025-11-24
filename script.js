@@ -727,6 +727,14 @@ async function loadMonthlyData() {
   const items = dailyList.querySelectorAll('.daily-item');
   items.forEach(item => item.remove());
 
+  // 選択月ラベル更新
+  const monthLabel = document.getElementById('summary-month-label');
+  if (showAllMonths) {
+    monthLabel.textContent = `${currentYear}年 稼働日数`;
+  } else {
+    monthLabel.textContent = `${currentMonth}月 稼働日数`;
+  }
+
   if (entries.length === 0) {
     emptyMessage.style.display = 'block';
     document.getElementById('total-days').textContent = '0日';

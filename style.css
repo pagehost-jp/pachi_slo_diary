@@ -305,10 +305,10 @@ body {
 }
 
 .page-title {
-  font-size: 1.3rem;
-  font-weight: 700;
+  font-size: 0.9rem;
+  font-weight: 600;
   margin: 0;
-  color: var(--text-main);
+  color: var(--text-sub);
 }
 
 .btn-add-top {
@@ -367,10 +367,10 @@ body {
 .month-btn {
   position: relative;
   padding: 6px 10px;
-  background: #e8e8e8;
+  background: var(--bg-input);
   border: 1px solid transparent;
   border-radius: 14px;
-  color: #666;
+  color: var(--text-sub);
   font-size: 0.75rem;
   font-weight: 500;
   cursor: pointer;
@@ -378,23 +378,29 @@ body {
 }
 
 .month-btn:hover {
-  background: #d8d8d8;
+  background: var(--bg-card);
+  color: var(--text-main);
 }
 
 .month-btn.active {
-  background: white;
-  border-color: #5b7cfa;
-  border-width: 2px;
-  color: #5b7cfa;
+  background: var(--accent);
+  color: white;
+  font-weight: 700;
 }
 
 .month-btn.all-btn {
-  background: #5b7cfa;
-  color: white;
+  background: var(--bg-input);
+  color: var(--text-sub);
 }
 
 .month-btn.all-btn:hover {
-  background: #4a6be9;
+  background: var(--bg-card);
+  color: var(--text-main);
+}
+
+.month-btn.all-btn.active {
+  background: var(--accent);
+  color: white;
 }
 
 /* Badge for entry count */
