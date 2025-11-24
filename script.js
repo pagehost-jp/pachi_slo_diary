@@ -16,6 +16,7 @@ const firebaseConfig = {
 let firebaseApp = null;
 let auth = null;
 let firestoreDb = null;
+let storage = null; // Firebase Storage
 let currentUser = null;
 let unsubscribeSync = null; // リアルタイム同期のリスナー解除用
 
@@ -28,6 +29,7 @@ async function initFirebase() {
     firebaseApp = firebase.initializeApp(firebaseConfig);
     auth = firebase.auth();
     firestoreDb = firebase.firestore();
+    storage = firebase.storage(); // Storage初期化
 
     // 認証の永続性をLOCALに設定（PWAでも維持される）
     await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
@@ -75,11 +77,21 @@ async function handleAuthStateChanged(user) {
     await syncFromCloud();
     startRealtimeSync();
 
+    // ストレージ使用量を読み込んで表示
+    await loadStorageUsage();
+    const storageUsageDiv = document.getElementById('storage-usage');
+    if (storageUsageDiv) storageUsageDiv.style.display = 'block';
+
     // ログイン完了後は必ず月別一覧を表示
     showMonthlyView();
   } else {
     // ログアウト時：リアルタイム同期を停止
     stopRealtimeSync();
+
+    // ストレージ使用量表示を非表示
+    const storageUsageDiv = document.getElementById('storage-usage');
+    if (storageUsageDiv) storageUsageDiv.style.display = 'none';
+
     showMonthlyView();
   }
 }
@@ -101,6 +113,11 @@ function startRealtimeSync() {
 
         // ローカルに同じIDのエントリーがあるかチェック
         const existingEntry = await getEntry(docId);
+
+        // クラウドの画像URLをimagesとして使用
+        if (cloudEntry.imageUrls && cloudEntry.imageUrls.length > 0) {
+          cloudEntry.images = cloudEntry.imageUrls;
+        }
 
         if (existingEntry) {
           const cloudUpdated = cloudEntry.updatedAt?.toDate?.() || new Date(0);
@@ -226,6 +243,11 @@ async function syncFromCloud() {
       const cloudEntry = doc.data();
       cloudEntry.cloudId = doc.id;
 
+      // クラウドの画像URLをimagesとして使用
+      if (cloudEntry.imageUrls && cloudEntry.imageUrls.length > 0) {
+        cloudEntry.images = cloudEntry.imageUrls;
+      }
+
       // ローカルに同じ日付のエントリーがあるかチェック
       const localEntries = await getEntriesByMonth(cloudEntry.year, cloudEntry.month);
       const existingEntry = localEntries.find(e => e.day === cloudEntry.day);
@@ -270,12 +292,176 @@ async function syncToCloud() {
 }
 
 // 単一エントリーをクラウドに保存
+// 画像をFirebase Storageにアップロード
+async function uploadImageToStorage(base64Data, entryId, imageIndex) {
+  if (!currentUser || !storage) return null;
+
+  try {
+    // base64からBlobに変換
+    const response = await fetch(base64Data);
+    const blob = await response.blob();
+
+    // ファイルパス: users/{uid}/images/{entryId}_{index}.jpg
+    const filePath = `users/${currentUser.uid}/images/${entryId}_${imageIndex}.jpg`;
+    const storageRef = storage.ref(filePath);
+
+    // アップロード
+    await storageRef.put(blob);
+
+    // 使用量を更新（画像サイズを記録）
+    await updateStorageUsage(blob.size);
+
+    // ダウンロードURLを取得
+    const downloadUrl = await storageRef.getDownloadURL();
+    return downloadUrl;
+  } catch (error) {
+    console.error('画像アップロードエラー:', error);
+    return null;
+  }
+}
+
+// ストレージ使用量を更新
+async function updateStorageUsage(addedBytes) {
+  if (!currentUser || !firestoreDb) return;
+
+  try {
+    const userDocRef = firestoreDb.collection('users').doc(currentUser.uid);
+    const userDoc = await userDocRef.get();
+
+    let currentUsage = 0;
+    let imageCount = 0;
+
+    if (userDoc.exists) {
+      const data = userDoc.data();
+      currentUsage = data.storageUsedBytes || 0;
+      imageCount = data.imageCount || 0;
+    }
+
+    const newUsage = currentUsage + addedBytes;
+    const newCount = imageCount + 1;
+
+    await userDocRef.set({
+      storageUsedBytes: newUsage,
+      imageCount: newCount,
+      lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    // 使用量チェック（4.5GB超えたら警告）
+    const usedGB = newUsage / (1024 * 1024 * 1024);
+    if (usedGB > 4.5) {
+      showStorageWarning(usedGB);
+    }
+
+    // UI更新
+    updateStorageDisplay(newUsage, newCount);
+  } catch (error) {
+    console.error('使用量更新エラー:', error);
+  }
+}
+
+// ストレージ警告を表示
+function showStorageWarning(usedGB) {
+  const warningDiv = document.createElement('div');
+  warningDiv.className = 'storage-warning';
+  warningDiv.innerHTML = `
+    <span>⚠️ 画像の保存容量が ${usedGB.toFixed(2)}GB / 5GB です。もうすぐ上限です！</span>
+    <button onclick="this.parentElement.remove()">×</button>
+  `;
+  document.body.appendChild(warningDiv);
+}
+
+// 使用量表示を更新
+function updateStorageDisplay(bytes, count) {
+  const display = document.getElementById('storage-usage-display');
+  if (!display) return;
+
+  const mb = bytes / (1024 * 1024);
+  const gb = bytes / (1024 * 1024 * 1024);
+
+  let sizeText;
+  if (gb >= 1) {
+    sizeText = `${gb.toFixed(2)} GB`;
+  } else {
+    sizeText = `${mb.toFixed(1)} MB`;
+  }
+
+  const percent = (gb / 5 * 100).toFixed(1);
+  display.innerHTML = `📸 ${count}枚 / ${sizeText} 使用中 (${percent}%)`;
+
+  // 80%超えたら色を変える
+  if (percent > 80) {
+    display.style.color = '#ff6b6b';
+  } else if (percent > 50) {
+    display.style.color = '#ffd93d';
+  } else {
+    display.style.color = '#6bcb77';
+  }
+
+  // ストレージバーの幅を更新
+  const barFill = document.getElementById('storage-bar-fill');
+  if (barFill) {
+    const barPercent = Math.min(parseFloat(percent), 100);
+    barFill.style.width = `${barPercent}%`;
+
+    // バーの色も変える
+    if (percent > 80) {
+      barFill.style.background = 'linear-gradient(90deg, #ff6b6b, #ee5a5a)';
+    } else if (percent > 50) {
+      barFill.style.background = 'linear-gradient(90deg, #ffd93d, #f0c929)';
+    } else {
+      barFill.style.background = 'linear-gradient(90deg, #6bcb77, #4ecdc4)';
+    }
+  }
+}
+
+// 使用量を読み込み
+async function loadStorageUsage() {
+  if (!currentUser || !firestoreDb) return;
+
+  try {
+    const userDoc = await firestoreDb.collection('users').doc(currentUser.uid).get();
+    if (userDoc.exists) {
+      const data = userDoc.data();
+      updateStorageDisplay(data.storageUsedBytes || 0, data.imageCount || 0);
+    }
+  } catch (error) {
+    console.error('使用量読み込みエラー:', error);
+  }
+}
+
+// 複数画像をアップロード
+async function uploadImagesToStorage(images, entryId) {
+  if (!images || images.length === 0) return [];
+
+  const uploadedUrls = [];
+  for (let i = 0; i < images.length; i++) {
+    const img = images[i];
+    if (!img) continue;
+
+    // すでにURLの場合はそのまま使用
+    if (img.startsWith('http')) {
+      uploadedUrls.push(img);
+    } else if (img.startsWith('data:')) {
+      // base64の場合はアップロード
+      const url = await uploadImageToStorage(img, entryId, i);
+      if (url) uploadedUrls.push(url);
+    }
+  }
+  return uploadedUrls;
+}
+
 async function saveEntryToCloud(entry) {
   if (!currentUser || !firestoreDb) return;
 
   try {
     const cloudEntry = { ...entry };
-    delete cloudEntry.images; // 画像はローカルのみ保存
+
+    // 画像をクラウドにアップロード
+    if (entry.images && entry.images.length > 0) {
+      const imageUrls = await uploadImagesToStorage(entry.images, entry.id);
+      cloudEntry.imageUrls = imageUrls; // URLとして保存
+    }
+    delete cloudEntry.images; // base64データは削除
     delete cloudEntry.id;
     cloudEntry.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
 
@@ -589,8 +775,9 @@ async function loadMonthlyData() {
     dailyList.insertBefore(item, emptyMessage);
   });
 
-  // サマリー更新
-  document.getElementById('total-days').textContent = `${entries.length}日`;
+  // サマリー更新（同じ日は1日としてカウント）
+  const uniqueDays = new Set(entries.map(e => `${e.year}-${e.month}-${e.day}`)).size;
+  document.getElementById('total-days').textContent = `${uniqueDays}日`;
   const totalEl = document.getElementById('monthly-total');
   totalEl.textContent = `${totalBalance >= 0 ? '+' : ''}${totalBalance.toLocaleString()}枚`;
   totalEl.className = `summary-value ${totalBalance >= 0 ? 'profit' : 'loss'}`;
@@ -1496,19 +1683,34 @@ async function getHallStats(year = null, month = null) {
   return stats;
 }
 
-async function updateHallDatalist() {
+// カスタムドロップダウンでホール候補を表示
+async function showHallDropdown() {
   const stats = await getHallStats();
-  const datalist = document.getElementById('hall-list');
-  datalist.innerHTML = '';
+  const dropdown = document.getElementById('hall-dropdown');
+  const hallInput = document.getElementById('hall-name');
+  const hallClearBtn = document.getElementById('btn-clear-hall');
 
   // 回数順でソート（よく行く店が上）
   const sorted = Object.entries(stats).sort((a, b) => b[1].count - a[1].count);
 
-  sorted.forEach(([hall]) => {
-    const option = document.createElement('option');
-    option.value = hall;
-    datalist.appendChild(option);
-  });
+  if (sorted.length === 0) {
+    dropdown.innerHTML = '<div class="dropdown-empty">履歴がありません</div>';
+  } else {
+    dropdown.innerHTML = sorted.map(([hall, data]) =>
+      `<div class="dropdown-item" data-value="${hall}">${hall}（${data.count}回）</div>`
+    ).join('');
+
+    // 各アイテムにクリックイベント
+    dropdown.querySelectorAll('.dropdown-item').forEach(item => {
+      item.addEventListener('click', () => {
+        hallInput.value = item.dataset.value;
+        hallClearBtn.style.display = 'flex';
+        dropdown.style.display = 'none';
+      });
+    });
+  }
+
+  dropdown.style.display = 'block';
 }
 
 // ========== 彦一分析 ==========
@@ -2118,19 +2320,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('machine-stats').style.display = 'none';
   });
 
-  // ホール名入力
+  // ホール名入力（カスタムドロップダウン）
   const hallInput = document.getElementById('hall-name');
   const hallClearBtn = document.getElementById('btn-clear-hall');
+  const hallDropdownBtn = document.getElementById('btn-hall-dropdown');
+  const hallDropdown = document.getElementById('hall-dropdown');
 
   hallInput.addEventListener('input', () => {
     hallClearBtn.style.display = hallInput.value ? 'flex' : 'none';
   });
-  hallInput.addEventListener('focus', updateHallDatalist);
+
+  // ドロップダウンボタンクリックで候補表示
+  hallDropdownBtn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    if (hallDropdown.style.display === 'none') {
+      await showHallDropdown();
+    } else {
+      hallDropdown.style.display = 'none';
+    }
+  });
 
   // クリアボタン（ホール名）
   hallClearBtn.addEventListener('click', () => {
     hallInput.value = '';
     hallClearBtn.style.display = 'none';
+    hallDropdown.style.display = 'none';
+  });
+
+  // 外部クリックでドロップダウンを閉じる
+  document.addEventListener('click', (e) => {
+    if (!hallDropdown.contains(e.target) && e.target !== hallDropdownBtn && e.target !== hallInput) {
+      hallDropdown.style.display = 'none';
+    }
   });
 
   // 彦一分析

@@ -22,6 +22,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
 </head>
 <body>
   <div class="container">
@@ -63,6 +64,13 @@
           <div class="sync-buttons" id="sync-buttons" style="display: none;">
             <button class="btn btn-primary" id="btn-manual-sync">🔄 今すぐ同期</button>
             <button class="btn btn-secondary" id="btn-logout">ログアウト</button>
+          </div>
+          <div class="storage-usage" id="storage-usage" style="display: none;">
+            <label class="form-label">画像の保存容量</label>
+            <div class="storage-usage-display" id="storage-usage-display">📸 0枚 / 0 MB 使用中 (0%)</div>
+            <div class="storage-bar">
+              <div class="storage-bar-fill" id="storage-bar-fill" style="width: 0%"></div>
+            </div>
           </div>
           <p class="hint">ログインするとリアルタイムでクラウドに同期されます</p>
         </div>
@@ -208,13 +216,14 @@
       <!-- ホール名 -->
       <div class="form-group">
         <label class="form-label">ホール名</label>
-        <div class="input-with-clear">
-          <input type="text" id="hall-name" class="input-text" placeholder="例: マルハン新宿店" list="hall-list" autocomplete="off">
+        <div class="input-with-dropdown">
+          <input type="text" id="hall-name" class="input-text" placeholder="例: マルハン新宿店" autocomplete="off">
+          <button type="button" class="btn-dropdown" id="btn-hall-dropdown">▼</button>
           <button type="button" class="btn-clear" id="btn-clear-hall" style="display: none;">×</button>
+          <div class="custom-dropdown" id="hall-dropdown" style="display: none;">
+            <!-- JSで動的に追加 -->
+          </div>
         </div>
-        <datalist id="hall-list">
-          <!-- JSで動的に追加 -->
-        </datalist>
       </div>
 
       <!-- 機種名 -->
