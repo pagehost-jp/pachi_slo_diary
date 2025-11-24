@@ -948,10 +948,15 @@ function renderCalendar(entries) {
       cell.classList.add('has-entry');
       cell.classList.add(totalBalance >= 0 ? 'profit' : 'loss');
 
+      // 店舗名（先頭3文字、重複除去）
+      const halls = [...new Set(dayEntries.map(e => e.hall).filter(h => h))];
+      const hallText = halls.map(h => h.substring(0, 3)).join('/');
+
       // 複数件ある場合はバッジ表示
       const countBadge = dayEntries.length > 1 ? `<span class="day-count">${dayEntries.length}</span>` : '';
       cell.innerHTML = `
         <span class="day-number">${day}${countBadge}</span>
+        <span class="day-hall">${hallText || ''}</span>
         <span class="day-balance ${totalBalance >= 0 ? 'profit' : 'loss'}">${totalBalance >= 0 ? '+' : ''}${(totalBalance / 1000).toFixed(0)}k</span>
       `;
       cell.onclick = () => {

@@ -673,9 +673,19 @@ body {
   font-weight: 600;
 }
 
+.calendar-day .day-hall {
+  font-size: 0.5rem;
+  color: var(--text-sub);
+  margin-top: 1px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .calendar-day .day-balance {
   font-size: 0.65rem;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 .calendar-day .day-balance.profit {
