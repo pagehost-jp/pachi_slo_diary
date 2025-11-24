@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pachi-slo-diary-v7';
+const CACHE_NAME = 'pachi-slo-diary-v8';
 
 // 最低限のプリキャッシュ（JS/CSSはネットワーク優先でOK）
 const urlsToCache = [

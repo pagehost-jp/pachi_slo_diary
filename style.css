@@ -1147,6 +1147,8 @@ body {
 .btn-dropdown {
   position: absolute;
   right: 44px;
+  top: 50%;
+  transform: translateY(-50%);
   width: 32px;
   height: 32px;
   border-radius: 6px;
@@ -1170,6 +1172,8 @@ body {
 
 .input-with-dropdown .btn-clear {
   right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .custom-dropdown {
