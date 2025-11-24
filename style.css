@@ -1152,9 +1152,9 @@ body {
   width: 32px;
   height: 32px;
   border-radius: 6px;
-  background: var(--accent);
+  background: #555;
   border: none;
-  color: white;
+  color: #ccc;
   font-size: 0.8rem;
   cursor: pointer;
   display: flex;

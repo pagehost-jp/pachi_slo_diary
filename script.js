@@ -1591,19 +1591,35 @@ async function getMachineStats(year = null, month = null) {
   return stats;
 }
 
-async function updateMachineDatalist() {
+// カスタムドロップダウンで機種候補を表示
+async function showMachineDropdown() {
   const stats = await getMachineStats();
-  const datalist = document.getElementById('machine-list');
-  datalist.innerHTML = '';
+  const dropdown = document.getElementById('machine-dropdown');
+  const machineInput = document.getElementById('machine-name');
+  const machineClearBtn = document.getElementById('btn-clear-machine');
 
   // 回数順でソート
   const sorted = Object.entries(stats).sort((a, b) => b[1].count - a[1].count);
 
-  sorted.forEach(([machine]) => {
-    const option = document.createElement('option');
-    option.value = machine;
-    datalist.appendChild(option);
-  });
+  if (sorted.length === 0) {
+    dropdown.innerHTML = '<div class="dropdown-empty">履歴がありません</div>';
+  } else {
+    dropdown.innerHTML = sorted.map(([machine, data]) =>
+      `<div class="dropdown-item" data-value="${machine}">${machine}（${data.count}回）</div>`
+    ).join('');
+
+    // 各アイテムにクリックイベント
+    dropdown.querySelectorAll('.dropdown-item').forEach(item => {
+      item.addEventListener('click', () => {
+        machineInput.value = item.dataset.value;
+        machineClearBtn.style.display = 'flex';
+        dropdown.style.display = 'none';
+        showMachineStats(item.dataset.value);
+      });
+    });
+  }
+
+  dropdown.style.display = 'block';
 }
 
 async function showMachineStats(machineName) {
@@ -2303,21 +2319,40 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('input-hours').addEventListener('change', updateHourlyRate);
   document.getElementById('input-minutes').addEventListener('change', updateHourlyRate);
 
-  // 機種名入力時の統計表示
+  // 機種名入力（カスタムドロップダウン）
   const machineInput = document.getElementById('machine-name');
-  const clearBtn = document.getElementById('btn-clear-machine');
+  const machineClearBtn = document.getElementById('btn-clear-machine');
+  const machineDropdownBtn = document.getElementById('btn-machine-dropdown');
+  const machineDropdown = document.getElementById('machine-dropdown');
 
   machineInput.addEventListener('input', () => {
     showMachineStats(machineInput.value);
-    clearBtn.style.display = machineInput.value ? 'flex' : 'none';
+    machineClearBtn.style.display = machineInput.value ? 'flex' : 'none';
   });
-  machineInput.addEventListener('focus', updateMachineDatalist);
+
+  // ドロップダウンボタンクリックで候補表示
+  machineDropdownBtn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    if (machineDropdown.style.display === 'none') {
+      await showMachineDropdown();
+    } else {
+      machineDropdown.style.display = 'none';
+    }
+  });
 
   // クリアボタン（機種名）
-  clearBtn.addEventListener('click', () => {
+  machineClearBtn.addEventListener('click', () => {
     machineInput.value = '';
-    clearBtn.style.display = 'none';
+    machineClearBtn.style.display = 'none';
+    machineDropdown.style.display = 'none';
     document.getElementById('machine-stats').style.display = 'none';
+  });
+
+  // 外部クリックで機種ドロップダウンを閉じる
+  document.addEventListener('click', (e) => {
+    if (!machineDropdown.contains(e.target) && e.target !== machineDropdownBtn && e.target !== machineInput) {
+      machineDropdown.style.display = 'none';
+    }
   });
 
   // ホール名入力（カスタムドロップダウン）

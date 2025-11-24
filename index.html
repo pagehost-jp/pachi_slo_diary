@@ -229,13 +229,14 @@
       <!-- 機種名 -->
       <div class="form-group">
         <label class="form-label">機種名</label>
-        <div class="input-with-clear">
-          <input type="text" id="machine-name" class="input-text" placeholder="例: ディスクアップ2" list="machine-list" autocomplete="off">
+        <div class="input-with-dropdown">
+          <input type="text" id="machine-name" class="input-text" placeholder="例: ディスクアップ2" autocomplete="off">
+          <button type="button" class="btn-dropdown" id="btn-machine-dropdown">▼</button>
           <button type="button" class="btn-clear" id="btn-clear-machine" style="display: none;">×</button>
+          <div class="custom-dropdown" id="machine-dropdown" style="display: none;">
+            <!-- JSで動的に追加 -->
+          </div>
         </div>
-        <datalist id="machine-list">
-          <!-- JSで動的に追加 -->
-        </datalist>
         <div class="machine-stats" id="machine-stats" style="display: none;">
           <!-- 選択した機種の統計 -->
         </div>
