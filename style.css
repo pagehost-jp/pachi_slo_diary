@@ -40,7 +40,7 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  overflow: hidden;
+  /* overflow: hidden; を削除 - これがスクロールを妨げていた犯人！ */
 }
 
 /* ========== Header ========== */
@@ -325,8 +325,10 @@ body {
   overflow-y: auto;
   overflow-x: hidden;
   padding: 0 20px 20px;
-  padding-bottom: calc(20px + env(safe-area-inset-bottom));
   min-height: 0; /* flexboxでスクロールを機能させるために必須 */
+  /* GPU加速を有効化してスクロールを滑らかに */
+  transform: translateZ(0);
+  will-change: scroll-position;
 }
 
 /* 収支入力画面のレイアウト */
