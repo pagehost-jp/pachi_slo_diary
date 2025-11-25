@@ -36,6 +36,10 @@ body {
   max-width: 600px;
   margin: 0 auto;
   padding: 16px;
+}
+
+/* TOP画面専用のフレックスレイアウト */
+.container:has(#monthly-view) {
   display: flex;
   flex-direction: column;
   height: 100vh;
