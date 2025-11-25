@@ -35,12 +35,12 @@ body {
 .container {
   max-width: 600px;
   margin: 0 auto;
-  padding: 16px;
   /* 全画面で共通のフレックスレイアウト */
   display: flex;
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
+  /* padding を削除して flexbox の高さ計算を明確にする */
 }
 
 /* ========== Header ========== */
@@ -49,9 +49,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 0;
+  padding: 16px; /* 上下左右すべてに16pxのパディング */
   border-bottom: 1px solid var(--border);
-  margin-bottom: 16px;
+  margin-bottom: 0; /* margin を削除して flexbox の高さ計算を明確にする */
   position: sticky;
   top: 0;
   background: #1a1a2e;
@@ -315,7 +315,7 @@ body {
 
 .monthly-header {
   flex: 0 0 auto;
-  padding: 16px 20px;
+  padding: 16px; /* 上下左右すべて16px（.containerのpaddingを移動） */
   background: var(--bg-card);
   border-radius: 16px 16px 0 0;
 }
@@ -324,7 +324,7 @@ body {
   flex: 1 1 auto;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 0 20px 20px;
+  padding: 0 16px 20px; /* 左右16px（.containerのpaddingを移動） */
   padding-bottom: calc(20px + env(safe-area-inset-bottom));
   -webkit-overflow-scrolling: touch;
   min-height: 0; /* flexboxでスクロールを機能させるために必須 */
@@ -338,8 +338,8 @@ body {
   min-height: 0; /* flexboxでスクロールを機能させるために必須 */
   margin-bottom: 0; /* .section のデフォルトmarginを打ち消し */
   -webkit-overflow-scrolling: touch; /* iOSでスムーズなスクロール */
-  /* .section のデフォルト padding を明示的に設定 */
-  padding: 20px; /* 上・左・右のパディング */
+  /* パディングを明示的に設定 */
+  padding: 20px 16px; /* 上下20px、左右16px */
   padding-bottom: calc(20px + env(safe-area-inset-bottom)); /* 下のパディング（iPhone対応） */
 }
 
