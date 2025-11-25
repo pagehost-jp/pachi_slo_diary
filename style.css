@@ -324,8 +324,8 @@ body {
   flex: 1 1 auto;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 0 16px 20px; /* 左右16px（.containerのpaddingを移動） */
-  padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  padding: 0 16px; /* 左右のみ */
+  padding-bottom: env(safe-area-inset-bottom, 16px); /* iPhoneのセーフエリアのみ、無い場合は16px */
   -webkit-overflow-scrolling: touch;
   min-height: 0; /* flexboxでスクロールを機能させるために必須 */
 }
@@ -895,9 +895,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-bottom: 20px;
-  max-height: 400px;
-  overflow-y: auto;
+  /* 不要な margin-bottom, max-height, overflow を削除 */
+  /* .monthly-content が親でスクロールするため、ここでは不要 */
 }
 
 .daily-item {
