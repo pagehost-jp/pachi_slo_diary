@@ -708,6 +708,70 @@ async function getAllEntries() {
   });
 }
 
+// ========== Firestore から直接読み込み ==========
+async function getEntriesByMonthFromCloud(year, month) {
+  if (!currentUser || !firestoreDb) {
+    return [];
+  }
+
+  try {
+    const snapshot = await firestoreDb
+      .collection('users')
+      .doc(currentUser.uid)
+      .collection('entries')
+      .where('year', '==', year)
+      .where('month', '==', month)
+      .get();
+
+    const entries = [];
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      data.id = doc.id;
+      // 画像URLをimagesとして使用
+      if (data.imageUrls && data.imageUrls.length > 0) {
+        data.images = data.imageUrls;
+      }
+      entries.push(data);
+    });
+
+    return entries;
+  } catch (error) {
+    console.error('Firestore読み込みエラー:', error);
+    return [];
+  }
+}
+
+async function getEntriesByYearFromCloud(year) {
+  if (!currentUser || !firestoreDb) {
+    return [];
+  }
+
+  try {
+    const snapshot = await firestoreDb
+      .collection('users')
+      .doc(currentUser.uid)
+      .collection('entries')
+      .where('year', '==', year)
+      .get();
+
+    const entries = [];
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      data.id = doc.id;
+      // 画像URLをimagesとして使用
+      if (data.imageUrls && data.imageUrls.length > 0) {
+        data.images = data.imageUrls;
+      }
+      entries.push(data);
+    });
+
+    return entries;
+  } catch (error) {
+    console.error('Firestore読み込みエラー:', error);
+    return [];
+  }
+}
+
 // ========== 画面表示 ==========
 function showMonthlyView() {
   // 選択モード中だったら解除
@@ -807,10 +871,20 @@ async function updateMonthButtons() {
 async function loadMonthlyData() {
   let entries;
 
-  if (showAllMonths) {
-    entries = await getEntriesByYear(currentYear);
+  // ログイン時は Firestore から直接読み込み（リアルタイム同期）
+  if (currentUser && firestoreDb) {
+    if (showAllMonths) {
+      entries = await getEntriesByYearFromCloud(currentYear);
+    } else {
+      entries = await getEntriesByMonthFromCloud(currentYear, currentMonth);
+    }
   } else {
-    entries = await getEntriesByMonth(currentYear, currentMonth);
+    // オフライン時は IndexedDB から読み込み
+    if (showAllMonths) {
+      entries = await getEntriesByYear(currentYear);
+    } else {
+      entries = await getEntriesByMonth(currentYear, currentMonth);
+    }
   }
 
   const dailyList = document.getElementById('daily-list');
