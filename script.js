@@ -457,18 +457,25 @@ async function saveEntryToCloud(entry) {
     delete cloudEntry.id;
     cloudEntry.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
 
-    // docIdはentry.idを使用（同じ日に複数エントリー対応）
-    // 数値IDを文字列に変換
-    const docId = String(entry.id);
-
-    await firestoreDb
+    const entriesRef = firestoreDb
       .collection('users')
       .doc(currentUser.uid)
-      .collection('entries')
-      .doc(docId)
-      .set(cloudEntry, { merge: true });
+      .collection('entries');
+
+    // 新規作成の場合は自動生成ID、編集の場合は既存IDを使用
+    if (entry.id) {
+      // 編集：既存のIDを文字列に変換
+      const docId = String(entry.id);
+      await entriesRef.doc(docId).set(cloudEntry, { merge: true });
+    } else {
+      // 新規作成：Firestoreに自動生成IDで保存
+      const docRef = await entriesRef.add(cloudEntry);
+      // 自動生成されたIDを返す（今後の編集用）
+      return docRef.id;
+    }
   } catch (error) {
     console.error('クラウド保存エラー:', error);
+    throw error;
   }
 }
 
