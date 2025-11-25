@@ -384,7 +384,7 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .month-btn {
@@ -464,29 +464,30 @@ body {
 /* ========== Monthly Summary ========== */
 .monthly-summary {
   display: flex;
-  gap: 12px;
-  margin-bottom: 20px;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
 .summary-item {
   flex: 1;
   background: var(--bg-input);
-  border-radius: 12px;
-  padding: 10px 16px;
+  border-radius: 10px;
+  padding: 6px 10px;
   text-align: center;
 }
 
 .summary-label {
   display: block;
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   color: var(--text-sub);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .summary-value {
-  font-size: 1.4rem;
+  font-size: 1.2rem;
   font-weight: 700;
   color: var(--success);
+  line-height: 1.2;
 }
 
 .summary-value.profit {
@@ -501,10 +502,14 @@ body {
   background: var(--bg-input);
   border: 2px solid var(--border);
   border-radius: 10px;
-  padding: 12px 16px;
-  font-size: 1.2rem;
+  padding: 8px 10px;
+  font-size: 1.1rem;
   cursor: pointer;
   transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 
 .btn-chart:hover {
