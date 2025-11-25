@@ -546,7 +546,8 @@ async function saveEntryToCloud(entry) {
     cloudEntry.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
 
     // docIdはentry.idを使用（同じ日に複数エントリー対応）
-    const docId = entry.id;
+    // 数値IDを文字列に変換
+    const docId = String(entry.id);
 
     await firestoreDb
       .collection('users')
@@ -564,7 +565,8 @@ async function deleteEntryFromCloud(entry) {
   if (!currentUser || !firestoreDb) return;
 
   try {
-    const docId = entry.id;
+    // 数値IDを文字列に変換
+    const docId = String(entry.id);
 
     await firestoreDb
       .collection('users')
@@ -769,6 +771,40 @@ async function getEntriesByYearFromCloud(year) {
   } catch (error) {
     console.error('Firestore読み込みエラー:', error);
     return [];
+  }
+}
+
+async function getEntryFromCloud(id) {
+  if (!currentUser || !firestoreDb) {
+    return null;
+  }
+
+  try {
+    // 数値IDを文字列に変換
+    const docId = String(id);
+
+    const doc = await firestoreDb
+      .collection('users')
+      .doc(currentUser.uid)
+      .collection('entries')
+      .doc(docId)
+      .get();
+
+    if (!doc.exists) {
+      return null;
+    }
+
+    const data = doc.data();
+    data.id = doc.id;
+    // 画像URLをimagesとして使用
+    if (data.imageUrls && data.imageUrls.length > 0) {
+      data.images = data.imageUrls;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Firestore読み込みエラー:', error);
+    return null;
   }
 }
 
@@ -1238,7 +1274,18 @@ async function openEntryForDate(year, month, day) {
 }
 
 async function loadEntry(id) {
-  const entry = await getEntry(id);
+  // ログイン時は Firestore から、オフライン時は IndexedDB から読み込み
+  let entry;
+  if (currentUser && firestoreDb) {
+    entry = await getEntryFromCloud(id);
+    if (!entry) {
+      // Firestore になければ IndexedDB から
+      entry = await getEntry(id);
+    }
+  } else {
+    entry = await getEntry(id);
+  }
+
   if (!entry) return;
 
   document.getElementById('entry-date').textContent =
