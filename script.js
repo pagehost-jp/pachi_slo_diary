@@ -2020,7 +2020,7 @@ async function showHallDropdown() {
     dropdown.innerHTML = '<div class="dropdown-empty">履歴がありません</div>';
   } else {
     dropdown.innerHTML = sorted.map(([hall, data]) =>
-      `<div class="dropdown-item" data-value="${hall}">${hall}（${data.count}回）</div>`
+      `<div class="dropdown-item" data-value="${hall}">${hall}</div>`
     ).join('');
 
     // 各アイテムにクリックイベント
