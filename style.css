@@ -36,10 +36,7 @@ body {
   max-width: 600px;
   margin: 0 auto;
   padding: 16px;
-}
-
-/* TOP画面専用のフレックスレイアウト */
-.container:has(#monthly-view) {
+  /* 全画面で共通のフレックスレイアウト */
   display: flex;
   flex-direction: column;
   height: 100vh;
@@ -313,6 +310,7 @@ body {
   padding: 0;
   overflow: hidden;
   min-height: 0;
+  margin-bottom: 0; /* .section のデフォルトmarginを打ち消し */
 }
 
 .monthly-header {
@@ -330,6 +328,17 @@ body {
   padding-bottom: calc(20px + env(safe-area-inset-bottom));
   -webkit-overflow-scrolling: touch;
   min-height: 0; /* flexboxでスクロールを機能させるために必須 */
+}
+
+/* 収支入力画面のレイアウト */
+#entry-view {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0; /* flexboxでスクロールを機能させるために必須 */
+  margin-bottom: 0; /* .section のデフォルトmarginを打ち消し */
+  -webkit-overflow-scrolling: touch; /* iOSでスムーズなスクロール */
+  padding-bottom: calc(20px + env(safe-area-inset-bottom)); /* iPhone対応 */
 }
 
 /* ========== Page Title ========== */
