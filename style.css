@@ -338,7 +338,9 @@ body {
   min-height: 0; /* flexboxでスクロールを機能させるために必須 */
   margin-bottom: 0; /* .section のデフォルトmarginを打ち消し */
   -webkit-overflow-scrolling: touch; /* iOSでスムーズなスクロール */
-  padding-bottom: calc(20px + env(safe-area-inset-bottom)); /* iPhone対応 */
+  /* .section のデフォルト padding を明示的に設定 */
+  padding: 20px; /* 上・左・右のパディング */
+  padding-bottom: calc(20px + env(safe-area-inset-bottom)); /* 下のパディング（iPhone対応） */
 }
 
 /* ========== Page Title ========== */
