@@ -1,7 +1,62 @@
 # プロジェクトメモ
 
+## 🚫 PWA 無効化中（開発モード）
+
+**現在の状態**: PWA（Service Worker）は開発中のため一時的に無効化されています
+
+### 無効化されているもの
+- ✅ Service Worker の登録（script.js で削除処理を実行）
+- ✅ 既存のキャッシュを毎回削除
+- ✅ manifest.json の読み込み（index.html でコメントアウト）
+- ✅ Apple PWA設定（apple-mobile-web-app-capable = "no"）
+- ✅ sw.js ファイル全体をコメントアウト
+
+### 本番前に PWA を再度有効化する方法
+
+#### 1. index.html（18-27行目あたり）
+```html
+<!-- 以下のコメントアウトを解除 -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Maxima">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+
+<!-- 以下を削除またはコメントアウト -->
+<!-- <meta name="apple-mobile-web-app-capable" content="no"> -->
+```
+
+#### 2. script.js（2934行目あたり）
+```javascript
+// 既存の削除処理ブロック全体をコメントアウトして、
+// 代わりにコメント内に記載されている登録コードを使用:
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('✅ Service Worker registered:', reg.scope))
+      .catch(err => console.log('❌ Service Worker registration failed:', err));
+  });
+}
+```
+
+#### 3. sw.js
+```javascript
+// ファイル全体のコメントアウトを解除（10-79行目の /* ... */ を削除）
+```
+
+#### 4. キャッシュバージョンを上げる
+```javascript
+// sw.js の CACHE_NAME を v29 以降に変更
+const CACHE_NAME = 'pachi-slo-diary-v29';
+```
+
+---
+
 ## 重要ルール
-- **コード変更後は必ず `sw.js` の `CACHE_NAME` のバージョンを上げる**（例: v17 → v18）
+- **開発中は PWA 無効化のまま作業する**
+- **本番公開前に上記手順で PWA を有効化する**
+- **コード変更後は必ず `sw.js` の `CACHE_NAME` のバージョンを上げる**（例: v28 → v29）
 - プッシュも忘れずに
 
 ## 用語

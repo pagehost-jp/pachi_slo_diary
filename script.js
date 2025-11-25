@@ -2932,11 +2932,47 @@ async function importData(file) {
 window.removeImage = removeImage;
 
 // ========== Service Worker ==========
-// オフライン機能は使わないため、SWは無効化
+// 【開発中】PWAキャッシュを完全に無効化
+// 本番前に再度有効化する場合: 以下のブロック全体をコメントアウトして、
+// 代わりに次のコードを使用してください:
+//
+// if ('serviceWorker' in navigator) {
+//   window.addEventListener('load', () => {
+//     navigator.serviceWorker.register('/sw.js')
+//       .then(reg => console.log('✅ Service Worker registered:', reg.scope))
+//       .catch(err => console.log('❌ Service Worker registration failed:', err));
+//   });
+// }
+//
+console.log('🚫 [開発モード] Service Workerを無効化中...');
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then((registrations) => {
-    for (const registration of registrations) {
-      registration.unregister();
+    if (registrations.length > 0) {
+      console.log(`🗑️ ${registrations.length}個のService Workerを削除します`);
+      for (const registration of registrations) {
+        registration.unregister().then(() => {
+          console.log('✅ Service Worker削除完了:', registration.scope);
+        });
+      }
+    } else {
+      console.log('✅ 削除するService Workerはありません');
+    }
+  });
+
+  // キャッシュも全削除
+  caches.keys().then((cacheNames) => {
+    if (cacheNames.length > 0) {
+      console.log(`🗑️ ${cacheNames.length}個のキャッシュを削除します`);
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          return caches.delete(cacheName).then(() => {
+            console.log('✅ キャッシュ削除完了:', cacheName);
+          });
+        })
+      );
+    } else {
+      console.log('✅ 削除するキャッシュはありません');
     }
   });
 }
+console.log('✅ [開発モード] PWA無効化処理完了 - 毎回最新版が表示されます');
