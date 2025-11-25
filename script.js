@@ -1514,19 +1514,63 @@ async function saveCurrentEntry() {
   isSaving = true;
 
   const saveBtn = document.getElementById('btn-save');
-  saveBtn.disabled = true;
-  saveBtn.textContent = '保存中...';
 
   const dateText = document.getElementById('entry-date').textContent;
   const match = dateText.match(/(\d+)年(\d+)月(\d+)日/);
 
   if (!match) {
-    alert('日付の形式が不正です');
+    showToast('日付の形式が不正です');
     isSaving = false;
-    saveBtn.disabled = false;
-    saveBtn.textContent = '保存する';
     return;
   }
+
+  // 必須項目のバリデーション
+  const machineInput = document.getElementById('machine-name');
+  const inInput = document.getElementById('input-in');
+  const outInput = document.getElementById('input-out');
+
+  const machine = machineInput.value.trim();
+  const inValue = inInput.value.trim();
+  const outValue = outInput.value.trim();
+
+  const errors = [];
+  const errorFields = [];
+
+  if (!machine) {
+    errors.push('機種名');
+    errorFields.push(machineInput);
+  }
+  if (!inValue) {
+    errors.push('IN枚数');
+    errorFields.push(inInput);
+  }
+  if (!outValue) {
+    errors.push('OUT枚数');
+    errorFields.push(outInput);
+  }
+
+  if (errors.length > 0) {
+    // エラーフィールドに赤枠をつける
+    errorFields.forEach(field => {
+      field.style.border = '2px solid #ff4757';
+      field.style.backgroundColor = 'rgba(255, 71, 87, 0.1)';
+    });
+
+    showToast(`入力項目が不足しています: ${errors.join('、')}`);
+    isSaving = false;
+
+    // 2秒後に赤枠を解除
+    setTimeout(() => {
+      errorFields.forEach(field => {
+        field.style.border = '';
+        field.style.backgroundColor = '';
+      });
+    }, 2000);
+    return;
+  }
+
+  saveBtn.disabled = true;
+  saveBtn.textContent = '保存中...';
 
   const entry = {
     year: parseInt(match[1]),
@@ -1534,9 +1578,9 @@ async function saveCurrentEntry() {
     day: parseInt(match[3]),
     date: `${match[1]}-${String(match[2]).padStart(2, '0')}-${String(match[3]).padStart(2, '0')}`,
     hall: document.getElementById('hall-name').value,
-    machine: document.getElementById('machine-name').value,
-    in: parseInt(document.getElementById('input-in').value) || 0,
-    out: parseInt(document.getElementById('input-out').value) || 0,
+    machine: machine,
+    in: parseInt(inValue) || 0,
+    out: parseInt(outValue) || 0,
     hours: (parseInt(document.getElementById('input-hours').value) || 1) + (parseInt(document.getElementById('input-minutes').value) || 0) / 60,
     memo: document.getElementById('memo').value,
     blog: document.getElementById('blog-content').value,
