@@ -1685,6 +1685,11 @@ async function saveCurrentEntry() {
 
     await saveEntryToCloud(entry);
     showToast('保存しました');
+
+    // 入力したエントリーの年月に移動
+    currentYear = entry.year;
+    currentMonth = entry.month;
+    showAllMonths = false; // 月別表示に切り替え
   } catch (error) {
     console.error('保存エラー:', error);
     alert('保存に失敗しました: ' + error.message);
