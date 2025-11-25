@@ -90,15 +90,13 @@
       <!-- 固定ヘッダー部分 -->
       <div class="monthly-header" id="monthly-header">
       <div class="page-title-row">
-        <h2 class="page-title">記録一覧</h2>
+        <!-- 年度選択バー -->
+        <div class="year-selector">
+          <button class="btn btn-year-nav" id="btn-prev-year">&lt;</button>
+          <span class="current-year" id="current-year">2025年度</span>
+          <button class="btn btn-year-nav" id="btn-next-year">&gt;</button>
+        </div>
         <button class="btn btn-primary btn-add-top" id="btn-add-entry">+ 収支を入力</button>
-      </div>
-
-      <!-- 年度選択バー -->
-      <div class="year-selector">
-        <button class="btn btn-year-nav" id="btn-prev-year">&lt;</button>
-        <span class="current-year" id="current-year">2025年度</span>
-        <button class="btn btn-year-nav" id="btn-next-year">&gt;</button>
       </div>
 
       <!-- 月選択ボタン -->

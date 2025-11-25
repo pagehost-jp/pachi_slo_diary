@@ -335,13 +335,6 @@ body {
   margin-bottom: 16px;
 }
 
-.page-title {
-  font-size: 0.9rem;
-  font-weight: 600;
-  margin: 0;
-  color: var(--text-sub);
-}
-
 .btn-add-top {
   padding: 8px 16px;
   font-size: 0.9rem;
@@ -364,7 +357,6 @@ body {
   padding: 4px 10px;
   background: var(--bg-input);
   border-radius: 6px;
-  margin-bottom: 12px;
   font-size: 0.85rem;
 }
 
