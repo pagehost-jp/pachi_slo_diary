@@ -632,17 +632,23 @@ body {
 
 /* ========== Calendar View ========== */
 .calendar-view {
-  margin-bottom: 0;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .calendar-header {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   text-align: center;
   font-size: 0.7rem;
   color: var(--text-sub);
   margin-bottom: 4px;
   padding: 4px 0;
+  gap: 2px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .calendar-header span:first-child {
@@ -655,8 +661,10 @@ body {
 
 .calendar-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 3px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .calendar-day {
@@ -672,11 +680,14 @@ body {
   transition: all 0.2s;
   position: relative;
   min-height: 0;
+  min-width: 0;
   padding: 2px;
+  box-sizing: border-box;
+  border: 1px solid transparent;
 }
 
 .calendar-day:hover {
-  border: 1px solid var(--accent);
+  border-color: var(--accent);
 }
 
 .calendar-day.empty {
@@ -686,7 +697,7 @@ body {
 }
 
 .calendar-day.empty:hover {
-  border: none;
+  border-color: var(--border);
 }
 
 .calendar-day.has-entry {
