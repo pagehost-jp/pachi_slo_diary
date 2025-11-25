@@ -326,7 +326,7 @@ body {
   overflow-x: hidden;
   padding: 0 16px; /* 左右のみ */
   padding-bottom: env(safe-area-inset-bottom, 16px); /* iPhoneのセーフエリアのみ、無い場合は16px */
-  -webkit-overflow-scrolling: touch;
+  /* -webkit-overflow-scrolling: touch を削除（PCとの互換性のため） */
   min-height: 0; /* flexboxでスクロールを機能させるために必須 */
 }
 
@@ -337,7 +337,7 @@ body {
   overflow-x: hidden;
   min-height: 0; /* flexboxでスクロールを機能させるために必須 */
   margin-bottom: 0; /* .section のデフォルトmarginを打ち消し */
-  -webkit-overflow-scrolling: touch; /* iOSでスムーズなスクロール */
+  /* -webkit-overflow-scrolling: touch を削除（PCとの互換性のため） */
   /* パディングを明示的に設定 */
   padding: 20px 16px; /* 上下20px、左右16px */
   padding-bottom: calc(20px + env(safe-area-inset-bottom)); /* 下のパディング（iPhone対応） */
