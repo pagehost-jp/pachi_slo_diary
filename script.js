@@ -456,12 +456,8 @@ async function saveEntryToCloud(entry) {
   try {
     const cloudEntry = { ...entry };
 
-    // 画像をクラウドにアップロード
-    if (entry.images && entry.images.length > 0) {
-      const imageUrls = await uploadImagesToStorage(entry.images, entry.id);
-      cloudEntry.imageUrls = imageUrls; // URLとして保存
-    }
-    delete cloudEntry.images; // base64データは削除
+    // 画像はFirebase Storageを使わず、base64のままFirestoreに保存
+    // （一時的な対応：Storageの問題を回避）
     delete cloudEntry.id;
     cloudEntry.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
 
