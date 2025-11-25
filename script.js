@@ -1242,10 +1242,10 @@ async function compressImage(base64Data) {
       let width = img.width;
       let height = img.height;
 
-      // 幅が1200pxより大きい場合のみリサイズ
-      if (width > 1200) {
-        height = (height * 1200) / width;
-        width = 1200;
+      // 幅が500pxより大きい場合のみリサイズ
+      if (width > 500) {
+        height = (height * 500) / width;
+        width = 500;
       }
 
       canvas.width = width;
@@ -1253,8 +1253,8 @@ async function compressImage(base64Data) {
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, width, height);
 
-      // JPEG形式、品質80%で圧縮
-      const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+      // JPEG形式、品質50%で圧縮
+      const compressedBase64 = canvas.toDataURL('image/jpeg', 0.5);
       resolve(compressedBase64);
     };
     img.src = base64Data;
@@ -1268,6 +1268,17 @@ function handleFiles(files) {
   const maxImages = 5;
   const currentCount = uploadedImages.filter(img => img).length;
   const availableSlots = maxImages - currentCount;
+
+  // 既に5枚アップロード済みの場合
+  if (currentCount >= maxImages) {
+    alert('画像は最大5枚までです');
+    return;
+  }
+
+  // 追加しようとしている枚数が制限を超える場合
+  if (files.length > availableSlots) {
+    alert(`画像は最大5枚までです（残り${availableSlots}枚追加できます）`);
+  }
 
   Array.from(files).slice(0, availableSlots).forEach(file => {
     if (!file.type.startsWith('image/')) return;
@@ -1342,6 +1353,38 @@ function renderThumbnails() {
       removeImage(index);
     });
   });
+
+  // 5枚到達時のUI制御
+  updateUploadZoneState();
+}
+
+// アップロードゾーンの状態を更新（5枚制限）
+function updateUploadZoneState() {
+  const maxImages = 5;
+  const currentCount = uploadedImages.filter(img => img).length;
+  const mainDropZone = document.getElementById('main-drop-zone');
+  const mainInput = document.getElementById('main-drop-input');
+  const dropText = mainDropZone?.querySelector('.drop-text');
+
+  if (!mainDropZone || !mainInput) return;
+
+  if (currentCount >= maxImages) {
+    // 5枚到達：無効化
+    mainDropZone.style.opacity = '0.5';
+    mainDropZone.style.pointerEvents = 'none';
+    mainInput.disabled = true;
+    if (dropText) {
+      dropText.textContent = '画像は5枚まで追加済みです';
+    }
+  } else {
+    // 5枚未満：有効化
+    mainDropZone.style.opacity = '1';
+    mainDropZone.style.pointerEvents = 'auto';
+    mainInput.disabled = false;
+    if (dropText) {
+      dropText.textContent = 'クリックまたはドラッグ＆ドロップで画像を追加';
+    }
+  }
 }
 
 // 画像拡大モーダル
