@@ -359,7 +359,91 @@ async function updateStorageUsage(addedBytes) {
   }
 }
 
-// ストレージ警告を表示
+// Firestoreデータ使用量を計算（新システム）
+async function calculateFirestoreUsage() {
+  if (!currentUser || !firestoreDb) return 0;
+
+  try {
+    const snapshot = await firestoreDb
+      .collection('users')
+      .doc(currentUser.uid)
+      .collection('entries')
+      .get();
+
+    let totalBytes = 0;
+
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      // JSON文字列に変換してサイズを測定
+      const jsonStr = JSON.stringify(data);
+      totalBytes += new Blob([jsonStr]).size;
+    });
+
+    return totalBytes;
+  } catch (error) {
+    console.error('使用量計算エラー:', error);
+    return 0;
+  }
+}
+
+// Firestore使用量表示を更新
+async function updateFirestoreUsageDisplay() {
+  const display = document.getElementById('storage-usage-display');
+  const storageUsageDiv = document.getElementById('storage-usage');
+  const warningDiv = document.getElementById('storage-warning');
+  const barFill = document.getElementById('storage-bar-fill');
+
+  if (!display || !currentUser) return;
+
+  // 使用量を計算
+  const bytes = await calculateFirestoreUsage();
+  const mb = bytes / (1024 * 1024);
+  const gb = bytes / (1024 * 1024 * 1024);
+
+  // 1GBを基準に%計算
+  const percent = (mb / 1000 * 100).toFixed(1);
+
+  let sizeText;
+  if (gb >= 1) {
+    sizeText = `${gb.toFixed(2)} GB`;
+  } else {
+    sizeText = `${mb.toFixed(1)} MB`;
+  }
+
+  display.innerHTML = `📦 ${sizeText} 使用中 / 1000 MB (${percent}%)`;
+
+  // ストレージバーの色と幅を更新
+  if (barFill) {
+    const barPercent = Math.min(parseFloat(percent), 100);
+    barFill.style.width = `${barPercent}%`;
+
+    // 色を変更
+    if (mb > 800) {
+      barFill.style.backgroundColor = '#ff4757'; // 赤
+      display.style.color = '#ff4757';
+    } else if (mb > 500) {
+      barFill.style.backgroundColor = '#ffa502'; // オレンジ
+      display.style.color = '#ffa502';
+    } else {
+      barFill.style.backgroundColor = '#26de81'; // 緑
+      display.style.color = '#26de81';
+    }
+  }
+
+  // 800MB超えたら警告表示
+  if (mb > 800 && warningDiv) {
+    warningDiv.style.display = 'block';
+  } else if (warningDiv) {
+    warningDiv.style.display = 'none';
+  }
+
+  // 表示エリアを表示
+  if (storageUsageDiv) {
+    storageUsageDiv.style.display = 'block';
+  }
+}
+
+// ストレージ警告を表示（旧システム・互換性のため残す）
 function showStorageWarning(usedGB) {
   const warningDiv = document.createElement('div');
   warningDiv.className = 'storage-warning';
@@ -2691,6 +2775,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ========== 設定モーダル ==========
 function openSettings() {
   document.getElementById('settings-modal').style.display = 'flex';
+  // ログイン中は使用量を更新
+  if (currentUser) {
+    updateFirestoreUsageDisplay();
+  }
 }
 
 function closeSettings() {

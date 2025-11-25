@@ -1887,6 +1887,17 @@ body {
   background: linear-gradient(90deg, #ff6b6b, #ee5a5a);
 }
 
+.storage-usage .storage-warning {
+  margin-top: 12px;
+  padding: 12px;
+  background: rgba(255, 71, 87, 0.1);
+  border-left: 4px solid #ff4757;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: #ff4757;
+  line-height: 1.5;
+}
+
 /* Storage Warning Popup */
 .storage-warning {
   position: fixed;

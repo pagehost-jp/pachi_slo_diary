@@ -66,10 +66,13 @@
             <button class="btn btn-secondary" id="btn-logout">ログアウト</button>
           </div>
           <div class="storage-usage" id="storage-usage" style="display: none;">
-            <label class="form-label">画像の保存容量</label>
-            <div class="storage-usage-display" id="storage-usage-display">📸 0枚 / 0 MB 使用中 (0%)</div>
+            <label class="form-label">データ保存容量</label>
+            <div class="storage-usage-display" id="storage-usage-display">📦 0 MB 使用中 / 1000 MB (0%)</div>
             <div class="storage-bar">
               <div class="storage-bar-fill" id="storage-bar-fill" style="width: 0%"></div>
+            </div>
+            <div class="storage-warning" id="storage-warning" style="display: none;">
+              ⚠️ 容量が800MBを超えています。古いデータの削除を検討してください。
             </div>
           </div>
           <p class="hint">ログインするとリアルタイムでクラウドに同期されます</p>
