@@ -106,41 +106,7 @@ function startRealtimeSync() {
     .collection('entries');
 
   unsubscribeSync = userEntriesRef.onSnapshot((snapshot) => {
-    snapshot.docChanges().forEach(async (change) => {
-      if (change.type === 'added' || change.type === 'modified') {
-        const cloudEntry = change.doc.data();
-        const docId = change.doc.id;
-
-        // ローカルに同じIDのエントリーがあるかチェック
-        const existingEntry = await getEntry(docId);
-
-        // クラウドの画像URLをimagesとして使用
-        if (cloudEntry.imageUrls && cloudEntry.imageUrls.length > 0) {
-          cloudEntry.images = cloudEntry.imageUrls;
-        }
-
-        if (existingEntry) {
-          const cloudUpdated = cloudEntry.updatedAt?.toDate?.() || new Date(0);
-          const localUpdated = existingEntry.updatedAt ? new Date(existingEntry.updatedAt) : new Date(0);
-
-          if (cloudUpdated > localUpdated) {
-            cloudEntry.id = docId;
-            await saveEntry(cloudEntry, false);
-          }
-        } else {
-          cloudEntry.id = docId;
-          await saveEntry(cloudEntry, false);
-        }
-      } else if (change.type === 'removed') {
-        // クラウドで削除された場合、ローカルも削除
-        const docId = change.doc.id;
-        const existingEntry = await getEntry(docId);
-        if (existingEntry) {
-          await deleteEntry(docId, false);
-        }
-      }
-    });
-    // 画面を更新
+    // Firestoreの変更を検知したら画面を更新
     loadMonthlyData();
   }, (error) => {
     console.error('リアルタイム同期エラー:', error);
@@ -221,75 +187,21 @@ async function logout() {
   }
 }
 
-// クラウドからデータを同期
+// クラウドからデータを同期（画面をリロード）
 async function syncFromCloud() {
   if (!currentUser || !firestoreDb) return;
 
   try {
-    const snapshot = await firestoreDb
-      .collection('users')
-      .doc(currentUser.uid)
-      .collection('entries')
-      .get();
-
-    if (snapshot.empty) {
-      // クラウドにデータがない場合、ローカルからアップロード
-      await syncToCloud();
-      return;
-    }
-
-    // クラウドのデータをローカルに保存
-    for (const doc of snapshot.docs) {
-      const cloudEntry = doc.data();
-      cloudEntry.cloudId = doc.id;
-
-      // クラウドの画像URLをimagesとして使用
-      if (cloudEntry.imageUrls && cloudEntry.imageUrls.length > 0) {
-        cloudEntry.images = cloudEntry.imageUrls;
-      }
-
-      // ローカルに同じ日付のエントリーがあるかチェック
-      const localEntries = await getEntriesByMonth(cloudEntry.year, cloudEntry.month);
-      const existingEntry = localEntries.find(e => e.day === cloudEntry.day);
-
-      if (existingEntry) {
-        // 更新日時で比較して新しい方を採用
-        const cloudUpdated = cloudEntry.updatedAt?.toDate?.() || new Date(0);
-        const localUpdated = existingEntry.updatedAt ? new Date(existingEntry.updatedAt) : new Date(0);
-
-        if (cloudUpdated > localUpdated) {
-          cloudEntry.id = existingEntry.id;
-          await saveEntry(cloudEntry, false); // クラウド同期なしで保存
-        }
-      } else {
-        await saveEntry(cloudEntry, false);
-      }
-    }
-
     console.log('クラウドからの同期完了');
-    // 画面を更新
+    // 画面を更新（Firestoreから直接読み込み）
     loadMonthlyData();
   } catch (error) {
     console.error('クラウド同期エラー:', error);
   }
 }
 
-// クラウドへデータを同期
-async function syncToCloud() {
-  if (!currentUser || !firestoreDb) return;
-
-  try {
-    const entries = await getAllEntries();
-
-    for (const entry of entries) {
-      await saveEntryToCloud(entry);
-    }
-
-    console.log('クラウドへの同期完了');
-  } catch (error) {
-    console.error('クラウドアップロードエラー:', error);
-  }
-}
+// クラウドへデータを同期（不要：常にFirestoreに直接保存）
+// この関数はIndexedDB時代の遺物のため削除
 
 // 単一エントリーをクラウドに保存
 // 画像をFirebase Storageにアップロード
@@ -582,12 +494,6 @@ async function deleteEntryFromCloud(entry) {
 // APIキー管理
 let geminiApiKey = localStorage.getItem('gemini_api_key') || '';
 
-// IndexedDB設定
-const DB_NAME = 'pachiSloDiary';
-const DB_VERSION = 1;
-const STORE_NAME = 'entries';
-
-let db = null;
 let currentYear = new Date().getFullYear();
 let currentMonth = new Date().getMonth() + 1;
 let showAllMonths = false;
@@ -598,119 +504,7 @@ let allowEntryView = false; // 起動直後はエントリー画面への遷移�
 let isSelectionMode = false; // 選択モード
 let selectedIds = new Set(); // 選択されたエントリーID
 
-// ========== IndexedDB初期化 ==========
-async function initDB() {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => {
-      db = request.result;
-      resolve(db);
-    };
-
-    request.onupgradeneeded = (event) => {
-      const db = event.target.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        const store = db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
-        store.createIndex('date', 'date', { unique: false });
-        store.createIndex('yearMonth', 'yearMonth', { unique: false });
-        store.createIndex('year', 'year', { unique: false });
-      }
-    };
-  });
-}
-
-// ========== データ操作 ==========
-async function saveEntry(entry, syncCloud = true) {
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_NAME], 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
-
-    // インデックス用
-    entry.yearMonth = `${entry.year}-${String(entry.month).padStart(2, '0')}`;
-    entry.updatedAt = new Date().toISOString();
-
-    const request = entry.id ? store.put(entry) : store.add(entry);
-    request.onsuccess = async () => {
-      // クラウド同期
-      if (syncCloud && currentUser) {
-        entry.id = request.result;
-        await saveEntryToCloud(entry);
-      }
-      resolve(request.result);
-    };
-    request.onerror = () => reject(request.error);
-  });
-}
-
-async function getEntry(id) {
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_NAME], 'readonly');
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.get(id);
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
-
-async function deleteEntry(id, entry = null) {
-  return new Promise(async (resolve, reject) => {
-    // 削除前にエントリー情報を取得（クラウド削除用）
-    if (!entry && currentUser) {
-      entry = await getEntry(id);
-    }
-
-    const transaction = db.transaction([STORE_NAME], 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.delete(id);
-    request.onsuccess = async () => {
-      // クラウドからも削除
-      if (entry && currentUser) {
-        await deleteEntryFromCloud(entry);
-      }
-      resolve();
-    };
-    request.onerror = () => reject(request.error);
-  });
-}
-
-async function getEntriesByMonth(year, month) {
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_NAME], 'readonly');
-    const store = transaction.objectStore(STORE_NAME);
-    const index = store.index('yearMonth');
-    const yearMonth = `${year}-${String(month).padStart(2, '0')}`;
-    const request = index.getAll(yearMonth);
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
-
-async function getEntriesByYear(year) {
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_NAME], 'readonly');
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.getAll();
-    request.onsuccess = () => {
-      const entries = request.result.filter(e => e.year === year);
-      resolve(entries);
-    };
-    request.onerror = () => reject(request.error);
-  });
-}
-
-async function getAllEntries() {
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_NAME], 'readonly');
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.getAll();
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
-
-// ========== Firestore から直接読み込み ==========
+// ========== Firestore データ操作 ==========
 async function getEntriesByMonthFromCloud(year, month) {
   if (!currentUser || !firestoreDb) {
     return [];
@@ -861,13 +655,12 @@ function updateYearDisplay() {
 }
 
 async function updateMonthButtons() {
-  // ログイン時は Firestore から、オフライン時は IndexedDB から読み込み
-  let yearEntries;
-  if (currentUser && firestoreDb) {
-    yearEntries = await getEntriesByYearFromCloud(currentYear);
-  } else {
-    yearEntries = await getEntriesByYear(currentYear);
+  // Firestore から読み込み（ログイン必須）
+  if (!currentUser || !firestoreDb) {
+    return; // ログインしていない場合は何もしない
   }
+
+  const yearEntries = await getEntriesByYearFromCloud(currentYear);
 
   // 月ごとのエントリー数をカウント
   const monthCounts = {};
@@ -911,22 +704,25 @@ async function updateMonthButtons() {
 }
 
 async function loadMonthlyData() {
-  let entries;
+  // Firestore から読み込み（ログイン必須）
+  if (!currentUser || !firestoreDb) {
+    // ログインしていない場合は空の配列を表示
+    const dailyList = document.getElementById('daily-list');
+    const emptyMessage = document.getElementById('empty-message');
+    const items = dailyList.querySelectorAll('.daily-item');
+    items.forEach(item => item.remove());
+    emptyMessage.style.display = 'block';
+    document.getElementById('total-days').textContent = '0日';
+    document.getElementById('monthly-total').textContent = '¥0';
+    document.getElementById('monthly-total').className = 'summary-value';
+    return;
+  }
 
-  // ログイン時は Firestore から直接読み込み（リアルタイム同期）
-  if (currentUser && firestoreDb) {
-    if (showAllMonths) {
-      entries = await getEntriesByYearFromCloud(currentYear);
-    } else {
-      entries = await getEntriesByMonthFromCloud(currentYear, currentMonth);
-    }
+  let entries;
+  if (showAllMonths) {
+    entries = await getEntriesByYearFromCloud(currentYear);
   } else {
-    // オフライン時は IndexedDB から読み込み
-    if (showAllMonths) {
-      entries = await getEntriesByYear(currentYear);
-    } else {
-      entries = await getEntriesByMonth(currentYear, currentMonth);
-    }
+    entries = await getEntriesByMonthFromCloud(currentYear, currentMonth);
   }
 
   const dailyList = document.getElementById('daily-list');
@@ -1105,12 +901,17 @@ function updateSelectionCount() {
 
 async function deleteSelectedEntries() {
   if (selectedIds.size === 0) return;
+  if (!currentUser || !firestoreDb) return;
 
   if (!confirm(`${selectedIds.size}件のデータを削除しますか？`)) return;
 
   try {
     for (const id of selectedIds) {
-      await deleteEntry(id);
+      // Firestoreから削除
+      const entry = await getEntryFromCloud(id);
+      if (entry) {
+        await deleteEntryFromCloud(entry);
+      }
     }
     showToast(`${selectedIds.size}件削除しました`);
     exitSelectionMode();
@@ -1261,7 +1062,9 @@ function showDayEntriesPopup(entries, year, month, day) {
 
 // 特定の日付でエントリーを開く
 async function openEntryForDate(year, month, day) {
-  const entries = await getEntriesByMonth(year, month);
+  if (!currentUser || !firestoreDb) return;
+
+  const entries = await getEntriesByMonthFromCloud(year, month);
   const existingEntry = entries.find(e => e.day === day);
 
   if (existingEntry) {
@@ -1274,18 +1077,12 @@ async function openEntryForDate(year, month, day) {
 }
 
 async function loadEntry(id) {
-  // ログイン時は Firestore から、オフライン時は IndexedDB から読み込み
-  let entry;
-  if (currentUser && firestoreDb) {
-    entry = await getEntryFromCloud(id);
-    if (!entry) {
-      // Firestore になければ IndexedDB から
-      entry = await getEntry(id);
-    }
-  } else {
-    entry = await getEntry(id);
+  // Firestore から読み込み（ログイン必須）
+  if (!currentUser || !firestoreDb) {
+    return; // ログインしていない場合は何もしない
   }
 
+  const entry = await getEntryFromCloud(id);
   if (!entry) return;
 
   document.getElementById('entry-date').textContent =
@@ -1881,13 +1678,17 @@ async function saveCurrentEntry() {
   }
 
   try {
-    await saveEntry(entry);
+    if (!currentUser || !firestoreDb) {
+      alert('ログインしてください');
+      return;
+    }
+
+    await saveEntryToCloud(entry);
     showToast('保存しました');
   } catch (error) {
     console.error('保存エラー:', error);
-    showToast('保存しました（同期エラーあり）');
+    alert('保存に失敗しました: ' + error.message);
   } finally {
-    // エラーがあってもTOPに戻る
     isSaving = false;
     saveBtn.disabled = false;
     saveBtn.textContent = '保存する';
@@ -1897,12 +1698,17 @@ async function saveCurrentEntry() {
 
 async function deleteCurrentEntry() {
   if (!currentEntryId) return;
+  if (!currentUser || !firestoreDb) return;
 
   if (!confirm('このエントリーを削除しますか？')) return;
 
   try {
-    await deleteEntry(currentEntryId);
-    showToast('削除しました');
+    // Firestoreから削除
+    const entry = await getEntryFromCloud(currentEntryId);
+    if (entry) {
+      await deleteEntryFromCloud(entry);
+      showToast('削除しました');
+    }
     showMonthlyView();
   } catch (error) {
     alert('削除に失敗しました: ' + error.message);
@@ -1999,13 +1805,15 @@ async function copyBlog() {
 
 // ========== 今日のエントリーを開く ==========
 async function openTodaysEntry() {
+  if (!currentUser || !firestoreDb) return;
+
   const today = new Date();
   const year = today.getFullYear();
   const month = today.getMonth() + 1;
   const day = today.getDate();
 
   // 今日のエントリーが既にあるか確認
-  const entries = await getEntriesByMonth(year, month);
+  const entries = await getEntriesByMonthFromCloud(year, month);
   const todaysEntry = entries.find(e => e.day === day);
 
   if (todaysEntry) {
@@ -2019,13 +1827,28 @@ async function openTodaysEntry() {
 
 // ========== 機種統計 ==========
 async function getMachineStats(year = null, month = null) {
+  if (!currentUser || !firestoreDb) {
+    return {};
+  }
+
   let entries;
   if (year && month) {
-    entries = await getEntriesByMonth(year, month);
+    entries = await getEntriesByMonthFromCloud(year, month);
   } else if (year) {
-    entries = await getEntriesByYear(year);
+    entries = await getEntriesByYearFromCloud(year);
   } else {
-    entries = await getAllEntries();
+    // 全データを取得する場合（複数年分）
+    const snapshot = await firestoreDb
+      .collection('users')
+      .doc(currentUser.uid)
+      .collection('entries')
+      .get();
+    entries = [];
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      data.id = doc.id;
+      entries.push(data);
+    });
   }
   const stats = {};
 
@@ -2127,13 +1950,28 @@ async function showMachineStats(machineName) {
 
 // ========== ホール統計 ==========
 async function getHallStats(year = null, month = null) {
+  if (!currentUser || !firestoreDb) {
+    return {};
+  }
+
   let entries;
   if (year && month) {
-    entries = await getEntriesByMonth(year, month);
+    entries = await getEntriesByMonthFromCloud(year, month);
   } else if (year) {
-    entries = await getEntriesByYear(year);
+    entries = await getEntriesByYearFromCloud(year);
   } else {
-    entries = await getAllEntries();
+    // 全データを取得する場合（複数年分）
+    const snapshot = await firestoreDb
+      .collection('users')
+      .doc(currentUser.uid)
+      .collection('entries')
+      .get();
+    entries = [];
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      data.id = doc.id;
+      entries.push(data);
+    });
   }
   const stats = {};
 
@@ -2336,7 +2174,11 @@ async function showChart(chartType = 'monthly', period = null) {
     return;
   }
 
-  const entries = await getEntriesByYear(currentYear);
+  if (!currentUser || !firestoreDb) {
+    return;
+  }
+
+  const entries = await getEntriesByYearFromCloud(currentYear);
 
   // 月別データを集計
   const monthlyData = {};
@@ -2683,8 +2525,6 @@ function selectMonth(month) {
 
 // ========== イベントリスナー ==========
 document.addEventListener('DOMContentLoaded', async () => {
-  await initDB();
-
   // Firebase初期化
   await initFirebase();
 
@@ -3042,7 +2882,23 @@ async function testApiKey() {
 
 // ========== バックアップ機能 ==========
 async function exportData() {
-  const entries = await getAllEntries();
+  if (!currentUser || !firestoreDb) {
+    alert('ログインしてください');
+    return;
+  }
+
+  // 全データを取得
+  const snapshot = await firestoreDb
+    .collection('users')
+    .doc(currentUser.uid)
+    .collection('entries')
+    .get();
+  const entries = [];
+  snapshot.forEach(doc => {
+    const data = doc.data();
+    data.id = doc.id;
+    entries.push(data);
+  });
   const data = {
     version: 1,
     exportDate: new Date().toISOString(),
@@ -3077,8 +2933,13 @@ async function importData(file) {
     }
 
     // データをインポート
+    if (!currentUser || !firestoreDb) {
+      alert('ログインしてください');
+      return;
+    }
+
     for (const entry of data.entries) {
-      await saveEntry(entry);
+      await saveEntryToCloud(entry);
     }
 
     alert(`${count}件のデータをインポートしました`);
