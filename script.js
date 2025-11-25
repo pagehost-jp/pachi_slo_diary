@@ -710,9 +710,15 @@ async function getAllEntries() {
 
 // ========== 画面表示 ==========
 function showMonthlyView() {
+  // 選択モード中だったら解除
+  if (isSelectionMode) {
+    exitSelectionMode();
+  }
+
   document.getElementById('monthly-view').style.display = 'block';
   document.getElementById('entry-view').style.display = 'none';
   document.getElementById('btn-back-header').style.display = 'none';
+  document.getElementById('btn-edit').style.display = 'block';
   updateYearDisplay();
   updateMonthButtons();
   loadMonthlyData();
@@ -724,9 +730,15 @@ function showEntryView(entryId = null) {
     return;
   }
 
+  // 選択モード中だったら解除
+  if (isSelectionMode) {
+    exitSelectionMode();
+  }
+
   document.getElementById('monthly-view').style.display = 'none';
   document.getElementById('entry-view').style.display = 'block';
   document.getElementById('btn-back-header').style.display = 'block';
+  document.getElementById('btn-edit').style.display = 'none';
   window.scrollTo(0, 0);
 
   currentEntryId = entryId;
@@ -896,10 +908,12 @@ async function loadMonthlyData() {
 }
 
 // ========== 選択モード ==========
-function enterSelectionMode(firstId) {
+function enterSelectionMode(firstId = null) {
   isSelectionMode = true;
   selectedIds.clear();
-  selectedIds.add(firstId);
+  if (firstId) {
+    selectedIds.add(firstId);
+  }
 
   const dailyList = document.getElementById('daily-list');
   dailyList.classList.add('selection-mode');
@@ -910,8 +924,8 @@ function enterSelectionMode(firstId) {
     const checkbox = item.querySelector('.selection-checkbox');
     if (checkbox) {
       checkbox.style.display = 'block';
-      checkbox.checked = item.dataset.id == firstId;
-      if (item.dataset.id == firstId) {
+      checkbox.checked = firstId && item.dataset.id == firstId;
+      if (firstId && item.dataset.id == firstId) {
         item.classList.add('selected');
       }
     }
@@ -919,6 +933,12 @@ function enterSelectionMode(firstId) {
 
   document.getElementById('selection-bar').style.display = 'flex';
   updateSelectionCount();
+
+  // 編集ボタンを「完了」に変更
+  const btnEdit = document.getElementById('btn-edit');
+  if (btnEdit) {
+    btnEdit.textContent = '完了';
+  }
 }
 
 function exitSelectionMode() {
@@ -938,6 +958,12 @@ function exitSelectionMode() {
   });
 
   document.getElementById('selection-bar').style.display = 'none';
+
+  // 編集ボタンを「編集」に戻す
+  const btnEdit = document.getElementById('btn-edit');
+  if (btnEdit) {
+    btnEdit.textContent = '編集';
+  }
 }
 
 function toggleItemSelection(id) {
@@ -2587,6 +2613,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // 選択モード
+  document.getElementById('btn-edit').addEventListener('click', () => {
+    if (isSelectionMode) {
+      exitSelectionMode();
+    } else {
+      enterSelectionMode();
+    }
+  });
   document.getElementById('btn-cancel-selection').addEventListener('click', exitSelectionMode);
   document.getElementById('btn-delete-selected').addEventListener('click', deleteSelectedEntries);
 

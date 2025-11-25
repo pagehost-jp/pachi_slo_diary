@@ -95,6 +95,7 @@ body {
   gap: 8px;
 }
 
+.btn-edit,
 .btn-settings {
   background: var(--bg-input);
   border: 1px solid var(--border);
@@ -105,6 +106,7 @@ body {
   cursor: pointer;
 }
 
+.btn-edit:hover,
 .btn-settings:hover {
   border-color: var(--accent);
   color: var(--text-main);
@@ -409,6 +411,8 @@ body {
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
+  /* ダブルタップズームを無効化 */
+  touch-action: manipulation;
 }
 
 .month-btn:hover {
@@ -2021,6 +2025,8 @@ body {
   accent-color: var(--accent);
   cursor: pointer;
   flex-shrink: 0;
+  /* 常にタッチイベントを親要素に通す（チェックボックス自体はクリック不可） */
+  pointer-events: none;
 }
 
 .daily-item.selected {
