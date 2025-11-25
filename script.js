@@ -293,12 +293,43 @@ async function syncToCloud() {
 
 // 単一エントリーをクラウドに保存
 // 画像をFirebase Storageにアップロード
+// 画像を圧縮（リサイズ + 品質調整）
+async function compressImage(base64Data, maxWidth = 1200, quality = 0.8) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+
+      // 幅が最大幅を超える場合はリサイズ
+      if (width > maxWidth) {
+        height = (height * maxWidth) / width;
+        width = maxWidth;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // 圧縮して出力
+      const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+      resolve(compressedBase64);
+    };
+    img.src = base64Data;
+  });
+}
+
 async function uploadImageToStorage(base64Data, entryId, imageIndex) {
   if (!currentUser || !storage) return null;
 
   try {
+    // 画像を圧縮
+    const compressedData = await compressImage(base64Data);
+
     // base64からBlobに変換
-    const response = await fetch(base64Data);
+    const response = await fetch(compressedData);
     const blob = await response.blob();
 
     // ファイルパス: users/{uid}/images/{entryId}_{index}.jpg
@@ -433,21 +464,22 @@ async function loadStorageUsage() {
 async function uploadImagesToStorage(images, entryId) {
   if (!images || images.length === 0) return [];
 
-  const uploadedUrls = [];
-  for (let i = 0; i < images.length; i++) {
-    const img = images[i];
-    if (!img) continue;
+  // 並列アップロードで高速化
+  const uploadPromises = images.map(async (img, i) => {
+    if (!img) return null;
 
     // すでにURLの場合はそのまま使用
     if (img.startsWith('http')) {
-      uploadedUrls.push(img);
+      return img;
     } else if (img.startsWith('data:')) {
       // base64の場合はアップロード
-      const url = await uploadImageToStorage(img, entryId, i);
-      if (url) uploadedUrls.push(url);
+      return await uploadImageToStorage(img, entryId, i);
     }
-  }
-  return uploadedUrls;
+    return null;
+  });
+
+  const uploadedUrls = await Promise.all(uploadPromises);
+  return uploadedUrls.filter(url => url !== null);
 }
 
 async function saveEntryToCloud(entry) {
