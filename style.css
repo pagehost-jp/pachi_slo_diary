@@ -308,7 +308,7 @@ body {
   display: flex;
   flex-direction: column;
   padding: 0;
-  overflow: hidden;
+  /* overflow: hidden; を削除 - これも犯人！ */
   min-height: 0;
   margin-bottom: 0; /* .section のデフォルトmarginを打ち消し */
 }
@@ -326,9 +326,6 @@ body {
   overflow-x: hidden;
   padding: 0 20px 20px;
   min-height: 0; /* flexboxでスクロールを機能させるために必須 */
-  /* GPU加速を有効化してスクロールを滑らかに */
-  transform: translateZ(0);
-  will-change: scroll-position;
 }
 
 /* 収支入力画面のレイアウト */
