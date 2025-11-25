@@ -647,6 +647,7 @@ function showEntryView(entryId = null) {
 
   currentEntryId = entryId;
   uploadedImages = [];
+  originalImagesForOcr = []; // OCR用元画像もクリア
 
   if (entryId) {
     loadEntry(entryId);
@@ -1191,6 +1192,37 @@ function initDropZones() {
   });
 }
 
+// 画像圧縮関数（1200px以下は圧縮しない、それ以上は縮小 + 品質80%）
+async function compressImage(base64Data) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+
+      // 幅が1200pxより大きい場合のみリサイズ
+      if (width > 1200) {
+        height = (height * 1200) / width;
+        width = 1200;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // JPEG形式、品質80%で圧縮
+      const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+      resolve(compressedBase64);
+    };
+    img.src = base64Data;
+  });
+}
+
+// 元画像を一時保存する配列（OCR用）
+let originalImagesForOcr = [];
+
 function handleFiles(files) {
   const maxImages = 5;
   const currentCount = uploadedImages.filter(img => img).length;
@@ -1199,14 +1231,23 @@ function handleFiles(files) {
   Array.from(files).slice(0, availableSlots).forEach(file => {
     if (!file.type.startsWith('image/')) return;
     const reader = new FileReader();
-    reader.onload = (e) => {
-      // 空いているスロットに追加
+    reader.onload = async (e) => {
+      const originalImage = e.target.result;
+
+      // 元画像をOCR用に一時保存
+      originalImagesForOcr.push(originalImage);
+
+      // 画像を圧縮
+      const compressedImage = await compressImage(originalImage);
+
+      // 圧縮後の画像を表示用・保存用に格納
       const emptyIndex = uploadedImages.findIndex((img, i) => !img);
       if (emptyIndex !== -1) {
-        uploadedImages[emptyIndex] = e.target.result;
+        uploadedImages[emptyIndex] = compressedImage;
       } else if (uploadedImages.length < maxImages) {
-        uploadedImages.push(e.target.result);
+        uploadedImages.push(compressedImage);
       }
+
       renderThumbnails();
       autoOcr();
     };
@@ -1294,8 +1335,13 @@ function showImageModal(src) {
 
 function removeImage(index) {
   uploadedImages[index] = null;
+  // 元画像も同じindexで削除
+  if (originalImagesForOcr[index]) {
+    originalImagesForOcr[index] = null;
+  }
   // 配列を詰める
   uploadedImages = uploadedImages.filter(img => img);
+  originalImagesForOcr = originalImagesForOcr.filter(img => img);
   renderThumbnails();
 }
 
@@ -1399,7 +1445,12 @@ async function performOcr() {
 
 JSONのみを返してください。`;
 
-    const resultText = await callGeminiAPI(prompt, validImages);
+    // OCRには元画像（非圧縮）を使用
+    const imagesToUse = originalImagesForOcr.length > 0 ? originalImagesForOcr : validImages;
+    const resultText = await callGeminiAPI(prompt, imagesToUse);
+
+    // OCR完了後、元画像はクリア（次回アップロード用）
+    originalImagesForOcr = [];
 
     // JSONを抽出
     const jsonMatch = resultText.match(/```json\s*([\s\S]*?)\s*```/) || resultText.match(/\{[\s\S]*\}/);
