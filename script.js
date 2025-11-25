@@ -825,7 +825,13 @@ function updateYearDisplay() {
 }
 
 async function updateMonthButtons() {
-  const yearEntries = await getEntriesByYear(currentYear);
+  // ログイン時は Firestore から、オフライン時は IndexedDB から読み込み
+  let yearEntries;
+  if (currentUser && firestoreDb) {
+    yearEntries = await getEntriesByYearFromCloud(currentYear);
+  } else {
+    yearEntries = await getEntriesByYear(currentYear);
+  }
 
   // 月ごとのエントリー数をカウント
   const monthCounts = {};
