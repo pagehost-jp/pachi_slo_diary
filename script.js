@@ -710,6 +710,13 @@ async function updateMonthButtons() {
   });
 }
 
+// ホール名を省略する関数（最大文字数を超えたら...で省略）
+function truncateHallName(hallName, maxLength = 12) {
+  if (!hallName) return '';
+  if (hallName.length <= maxLength) return hallName;
+  return hallName.substring(0, maxLength) + '...';
+}
+
 async function loadMonthlyData() {
   // Firestore から読み込み（ログイン必須）
   if (!currentUser || !firestoreDb) {
@@ -800,11 +807,14 @@ async function loadMonthlyData() {
 
     const displayBalance = `${balance >= 0 ? '+' : ''}${balance.toLocaleString()}枚`;
 
+    // ホール名の表示（省略処理適用）
+    const hallNameDisplay = entry.hall ? `<span class="daily-hall">${truncateHallName(entry.hall)}</span>` : '';
+
     item.innerHTML = `
       <input type="checkbox" class="selection-checkbox" style="display: none;">
       <img class="daily-thumb" src="${thumbSrc}" alt="">
       <div class="daily-info">
-        <p class="daily-date">${entry.month}/${entry.day}</p>
+        <p class="daily-date">${entry.month}/${entry.day}${hallNameDisplay}</p>
         <p class="daily-machine">${entry.machine || '未入力'}</p>
       </div>
       <span class="daily-balance ${balance >= 0 ? 'profit' : 'loss'}">
@@ -2718,6 +2728,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('machine-stats').style.display = 'none';
   });
 
+  // 機種名入力欄：IME対応（Enterキーでキーボードを閉じる）
+  let isComposingMachine = false;
+  machineInput.addEventListener('compositionstart', () => {
+    isComposingMachine = true;
+  });
+  machineInput.addEventListener('compositionend', () => {
+    isComposingMachine = false;
+  });
+  machineInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      if (isComposingMachine) {
+        // IME変換の確定なので、アプリ側のEnter処理はしない
+        return;
+      }
+      e.preventDefault();
+      e.target.blur();
+    }
+  });
+
   // 外部クリックで機種ドロップダウンを閉じる
   document.addEventListener('click', (e) => {
     if (!machineDropdown.contains(e.target) && e.target !== machineDropdownBtn && e.target !== machineInput) {
@@ -2750,6 +2779,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     hallInput.value = '';
     hallClearBtn.style.display = 'none';
     hallDropdown.style.display = 'none';
+  });
+
+  // ホール名入力欄：IME対応（Enterキーでキーボードを閉じる）
+  let isComposingHall = false;
+  hallInput.addEventListener('compositionstart', () => {
+    isComposingHall = true;
+  });
+  hallInput.addEventListener('compositionend', () => {
+    isComposingHall = false;
+  });
+  hallInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      if (isComposingHall) {
+        // IME変換の確定なので、アプリ側のEnter処理はしない
+        return;
+      }
+      e.preventDefault();
+      e.target.blur();
+    }
   });
 
   // 外部クリックでドロップダウンを閉じる

@@ -87,6 +87,27 @@
           <p class="hint">ログインするとリアルタイムでクラウドに同期されます</p>
         </div>
 
+        <!-- データバックアップ -->
+        <div class="form-group">
+          <label class="form-label">💾 データバックアップ</label>
+          <p class="hint backup-description">
+            ⚠️ 万が一に備えて定期的にバックアップを取ることを強く推奨します
+          </p>
+          <div class="backup-buttons">
+            <button class="btn btn-backup btn-export" id="btn-export-data">
+              📥 エクスポート（ダウンロード）
+            </button>
+            <button class="btn btn-backup btn-import" id="btn-import-data">
+              📤 インポート（復元）
+            </button>
+          </div>
+          <input type="file" id="import-file-input" accept=".json" style="display: none;">
+          <p class="hint backup-note">
+            ※ エクスポートしたJSONファイルには画像URLが含まれますが、画像の実体（base64）は含まれません。<br>
+            画像はFirebase Storageに保存されているため、URLから復元できます。
+          </p>
+        </div>
+
         <div class="modal-buttons">
           <button class="btn btn-secondary" id="btn-close-settings">閉じる</button>
           <button class="btn btn-primary" id="btn-save-settings">APIキー保存</button>
@@ -388,5 +409,6 @@
   </div>
 
   <script src="script.js?v=14"></script>
+  <script src="backup.js"></script>
 </body>
 </html>
