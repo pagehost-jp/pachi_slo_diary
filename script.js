@@ -16,7 +16,7 @@ const firebaseConfig = {
 // ⚠️ モデル名変更時はここだけを修正すればOK
 const GEMINI_MODELS = {
   primary: "gemini-2.5-flash",      // 第一候補（最新・最適）
-  fallback1: "gemini-1.5-flash",    // フォールバック1
+  fallback1: "gemini-1.5-flash",    // フォールバック1（高速・安定）
   fallback2: "gemini-1.0-pro"       // フォールバック2（最終手段）
 };
 
