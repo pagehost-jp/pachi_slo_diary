@@ -216,11 +216,12 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.7);
+  background: var(--bg-dark); /* 完全不透明な背景 */
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  overflow-y: auto; /* モーダル全体でスクロール可能に */
 }
 
 .modal-content {
@@ -228,7 +229,10 @@ body {
   border-radius: 16px;
   padding: 24px;
   width: 90%;
-  max-width: 400px;
+  max-width: 500px;
+  max-height: 90vh; /* 高さ制限 */
+  overflow-y: auto; /* コンテンツがはみ出る場合スクロール */
+  margin: auto; /* 中央配置 */
 }
 
 .modal-content h3 {

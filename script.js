@@ -94,6 +94,8 @@ async function initFirebase() {
         const settingsModal = document.getElementById('settings-modal');
         if (settingsModal) {
           settingsModal.style.display = 'none';
+          // 背景のスクロールを再度有効化
+          document.body.style.overflow = '';
           showDebugLog('🔒 設定モーダルを閉じました');
         }
       } else {
@@ -3085,6 +3087,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ========== 設定モーダル ==========
 function openSettings() {
   document.getElementById('settings-modal').style.display = 'flex';
+  // 背景のスクロールを無効化
+  document.body.style.overflow = 'hidden';
   // ログイン中は使用量を更新
   if (currentUser) {
     updateFirestoreUsageDisplay();
@@ -3098,6 +3102,8 @@ function closeSettings() {
     return;
   }
   document.getElementById('settings-modal').style.display = 'none';
+  // 背景のスクロールを再度有効化
+  document.body.style.overflow = '';
 }
 
 async function saveSettings() {
@@ -3118,6 +3124,8 @@ async function saveSettings() {
     }
     showToast('設定を保存しました');
     document.getElementById('settings-modal').style.display = 'none';
+    // 背景のスクロールを再度有効化
+    document.body.style.overflow = '';
   } else {
     showToast('Gemini APIキーを入力してください', true);
   }
