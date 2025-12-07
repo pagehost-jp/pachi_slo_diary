@@ -34,6 +34,19 @@ async function initFirebase() {
     // 認証の永続性をLOCALに設定（PWAでも維持される）
     await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
+    // リダイレクトログインの結果を処理（スマホ対応）
+    try {
+      const result = await auth.getRedirectResult();
+      if (result.user) {
+        console.log('リダイレクトログイン成功:', result.user.displayName);
+      }
+    } catch (error) {
+      console.error('リダイレクトログインエラー:', error);
+      if (error.code !== 'auth/popup-closed-by-user') {
+        alert('ログインに失敗しました: ' + error.message);
+      }
+    }
+
     // 認証状態の監視
     auth.onAuthStateChanged(handleAuthStateChanged);
     return true;
@@ -158,7 +171,7 @@ function updateUserUI() {
   }
 }
 
-// Googleログイン
+// Googleログイン（スマホ対応）
 async function loginWithGoogle() {
   if (!auth) {
     alert('Firebase未設定です。設定を確認してください。');
@@ -166,7 +179,10 @@ async function loginWithGoogle() {
   }
   try {
     const provider = new firebase.auth.GoogleAuthProvider();
-    await auth.signInWithPopup(provider);
+
+    // ローカル開発環境では常にリダイレクト方式を使用
+    // （ポップアップブロック回避 & スマホ対応）
+    await auth.signInWithRedirect(provider);
   } catch (error) {
     console.error('ログインエラー:', error);
     if (error.code === 'auth/popup-closed-by-user') {
