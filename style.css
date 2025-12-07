@@ -673,6 +673,50 @@ body {
   padding: 0;
   width: 100%;
   box-sizing: border-box;
+  touch-action: pan-y; /* 縦スクロールは許可、横スワイプはカスタム処理 */
+}
+
+.calendar-month-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  margin-bottom: 8px;
+}
+
+.calendar-month-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-main);
+  flex: 1;
+  text-align: center;
+}
+
+.btn-calendar-prev,
+.btn-calendar-next {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bg-input);
+  border: 2px solid var(--border);
+  color: var(--text-main);
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-calendar-prev:hover,
+.btn-calendar-next:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn-calendar-prev:active,
+.btn-calendar-next:active {
+  transform: scale(0.95);
 }
 
 .calendar-header {

@@ -1058,6 +1058,12 @@ function renderCalendar(entries) {
   }
   document.querySelector('.view-toggle').style.display = 'flex';
 
+  // 月表示ラベルを更新
+  const monthLabel = document.getElementById('calendar-month-label');
+  if (monthLabel) {
+    monthLabel.textContent = `${currentYear}年${currentMonth}月`;
+  }
+
   const grid = document.getElementById('calendar-grid');
   grid.innerHTML = '';
 
@@ -1132,6 +1138,69 @@ function renderCalendar(entries) {
     }
 
     grid.appendChild(cell);
+  }
+}
+
+// カレンダーの月を変更
+function changeCalendarMonth(direction) {
+  currentMonth += direction;
+
+  // 年をまたぐ処理
+  if (currentMonth > 12) {
+    currentMonth = 1;
+    currentYear += 1;
+  } else if (currentMonth < 1) {
+    currentMonth = 12;
+    currentYear -= 1;
+  }
+
+  // 月選択ボタンの状態を更新
+  document.querySelectorAll('.month-btn').forEach(btn => {
+    btn.classList.remove('active');
+    if (parseInt(btn.dataset.month) === currentMonth) {
+      btn.classList.add('active');
+    }
+  });
+
+  // データを再読み込み
+  loadMonthlyData();
+}
+
+// カレンダーのスワイプ操作を初期化
+function initCalendarSwipe() {
+  const calendarGrid = document.getElementById('calendar-grid');
+  if (!calendarGrid) return;
+
+  let touchStartX = 0;
+  let touchEndX = 0;
+  let touchStartY = 0;
+  let touchEndY = 0;
+
+  calendarGrid.addEventListener('touchstart', (e) => {
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+  }, { passive: true });
+
+  calendarGrid.addEventListener('touchend', (e) => {
+    touchEndX = e.changedTouches[0].screenX;
+    touchEndY = e.changedTouches[0].screenY;
+    handleSwipe();
+  }, { passive: true });
+
+  function handleSwipe() {
+    const diffX = touchEndX - touchStartX;
+    const diffY = touchEndY - touchStartY;
+
+    // 横方向のスワイプが縦方向より大きい場合のみ処理
+    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
+      if (diffX > 0) {
+        // 右スワイプ → 前月
+        changeCalendarMonth(-1);
+      } else {
+        // 左スワイプ → 次月
+        changeCalendarMonth(1);
+      }
+    }
   }
 }
 
@@ -3028,6 +3097,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ロゴクリックで一覧画面へ
   document.getElementById('logo-title').addEventListener('click', showMonthlyView);
+
+  // カレンダーの月移動（矢印ボタン）
+  document.getElementById('btn-calendar-prev').addEventListener('click', () => {
+    changeCalendarMonth(-1);
+  });
+
+  document.getElementById('btn-calendar-next').addEventListener('click', () => {
+    changeCalendarMonth(1);
+  });
+
+  // カレンダーのスワイプ操作
+  initCalendarSwipe();
 
   // 設定モーダル
   document.getElementById('btn-settings').addEventListener('click', openSettings);
