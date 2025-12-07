@@ -3194,9 +3194,26 @@ function openSettings() {
   // APIキーの表示状態を更新
   updateApiKeyView();
 
+  // 設定画面のログイン状態を更新
+  updateSettingsLoginStatus();
+
   // ログイン中は使用量を更新
   if (currentUser) {
     updateFirestoreUsageDisplay();
+  }
+}
+
+// 設定画面のログイン状態表示を更新
+function updateSettingsLoginStatus() {
+  const loginText = document.getElementById('settings-login-text');
+  if (!loginText) return;
+
+  if (currentUser) {
+    loginText.textContent = `✓ ${currentUser.displayName || 'ログイン中'}`;
+    loginText.classList.add('logged-in');
+  } else {
+    loginText.textContent = '未ログイン';
+    loginText.classList.remove('logged-in');
   }
 }
 

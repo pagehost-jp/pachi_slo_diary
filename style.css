@@ -259,11 +259,35 @@ body {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 20px;
+  gap: 12px;
 }
 
 .settings-header h3 {
   margin: 0;
   color: var(--text-main);
+  flex-shrink: 0;
+}
+
+.settings-user-info {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.settings-login-text {
+  font-size: 0.85rem;
+  color: var(--text-sub);
+  padding: 6px 12px;
+  background: var(--bg-input);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.settings-login-text.logged-in {
+  color: var(--profit);
+  border-color: var(--profit);
+  font-weight: 600;
 }
 
 .btn-back-to-top {
