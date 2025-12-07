@@ -1153,6 +1153,12 @@ function changeCalendarMonth(direction) {
     currentYear -= 1;
   }
 
+  // カレンダーの月ラベルを即座に更新（これが最重要！）
+  const monthLabel = document.getElementById('calendar-month-label');
+  if (monthLabel) {
+    monthLabel.textContent = `${currentYear}年${currentMonth}月`;
+  }
+
   // 月選択ボタンの状態を更新
   document.querySelectorAll('.month-btn').forEach(btn => {
     btn.classList.remove('active');
