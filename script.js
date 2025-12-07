@@ -211,6 +211,7 @@ function updateUserUI() {
   const syncButtons = document.getElementById('sync-buttons');
   const syncText = document.getElementById('sync-text');
   const syncIcon = document.querySelector('.sync-icon');
+  const realtimeSyncBadge = document.getElementById('realtime-sync-badge');
 
   showDebugLog('🔍 DOM要素: userBtn=' + (userBtn ? 'あり' : 'なし') + ', userName=' + (userName ? 'あり' : 'なし'));
 
@@ -223,10 +224,11 @@ function updateUserUI() {
     if (loginBtn) loginBtn.style.display = 'none';
     if (syncButtons) syncButtons.style.display = 'flex';
     if (syncText) {
-      syncText.textContent = 'リアルタイム同期中';
+      syncText.textContent = 'ログイン中 (' + (currentUser.displayName || 'ユーザー') + ')';
       syncText.classList.add('synced');
     }
     if (syncIcon) syncIcon.textContent = '✅';
+    if (realtimeSyncBadge) realtimeSyncBadge.style.display = 'inline-block';
   } else {
     showDebugLog('❌ ログアウトUI表示');
     if (userBtn) userBtn.classList.remove('logged-in');
@@ -240,6 +242,7 @@ function updateUserUI() {
       syncText.classList.remove('synced');
     }
     if (syncIcon) syncIcon.textContent = '☁️';
+    if (realtimeSyncBadge) realtimeSyncBadge.style.display = 'none';
   }
 }
 

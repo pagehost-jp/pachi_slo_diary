@@ -148,6 +148,23 @@ body {
 }
 
 /* ========== Cloud Sync ========== */
+.cloud-sync-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.realtime-sync-badge {
+  font-size: 0.75rem;
+  color: var(--profit);
+  background: rgba(0, 255, 136, 0.1);
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--profit);
+  white-space: nowrap;
+}
+
 .cloud-sync-status {
   display: flex;
   align-items: center;
