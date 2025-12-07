@@ -680,7 +680,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 20px;
+  gap: 40px;
   padding: 12px 0;
   margin-bottom: 8px;
 }
@@ -695,18 +695,19 @@ body {
 
 .btn-calendar-prev,
 .btn-calendar-next {
-  width: 36px;
-  height: 36px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   background: var(--bg-input);
   border: 2px solid var(--border);
   color: var(--text-main);
-  font-size: 1.2rem;
+  font-size: 1.5rem;
   cursor: pointer;
   transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .btn-calendar-prev:hover,
