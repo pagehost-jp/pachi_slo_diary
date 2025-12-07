@@ -197,6 +197,8 @@ function stopRealtimeSync() {
 
 // UI更新
 function updateUserUI() {
+  showDebugLog('🖼️ updateUserUI呼び出し: currentUser=' + (currentUser ? currentUser.displayName : 'null'));
+
   const userBtn = document.getElementById('btn-user');
   const userName = document.getElementById('user-name');
   const loginBtn = document.getElementById('btn-google-login');
@@ -204,10 +206,14 @@ function updateUserUI() {
   const syncText = document.getElementById('sync-text');
   const syncIcon = document.querySelector('.sync-icon');
 
+  showDebugLog('🔍 DOM要素: userBtn=' + (userBtn ? 'あり' : 'なし') + ', userName=' + (userName ? 'あり' : 'なし'));
+
   if (currentUser) {
-    userBtn.classList.add('logged-in');
-    userName.textContent = currentUser.displayName?.split(' ')[0] || 'ユーザー';
-    document.querySelector('.user-icon').textContent = '✓';
+    showDebugLog('✅ ログインUI表示: ' + currentUser.displayName);
+    if (userBtn) userBtn.classList.add('logged-in');
+    if (userName) userName.textContent = currentUser.displayName?.split(' ')[0] || 'ユーザー';
+    const userIcon = document.querySelector('.user-icon');
+    if (userIcon) userIcon.textContent = '✓';
     if (loginBtn) loginBtn.style.display = 'none';
     if (syncButtons) syncButtons.style.display = 'flex';
     if (syncText) {
@@ -216,9 +222,11 @@ function updateUserUI() {
     }
     if (syncIcon) syncIcon.textContent = '✅';
   } else {
-    userBtn.classList.remove('logged-in');
-    userName.textContent = 'ログイン';
-    document.querySelector('.user-icon').textContent = '👤';
+    showDebugLog('❌ ログアウトUI表示');
+    if (userBtn) userBtn.classList.remove('logged-in');
+    if (userName) userName.textContent = 'ログイン';
+    const userIcon = document.querySelector('.user-icon');
+    if (userIcon) userIcon.textContent = '👤';
     if (loginBtn) loginBtn.style.display = 'block';
     if (syncButtons) syncButtons.style.display = 'none';
     if (syncText) {
