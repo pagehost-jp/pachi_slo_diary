@@ -731,6 +731,10 @@ function showMonthlyView() {
   document.getElementById('entry-view').style.display = 'none';
   document.getElementById('btn-back-header').style.display = 'none';
   document.getElementById('btn-edit').style.display = 'block';
+
+  // 履歴/カレンダーの表示状態を保持（切り替えない）
+  // 現在の表示状態をそのまま維持
+
   updateYearDisplay();
   updateMonthButtons();
   loadMonthlyData();
@@ -1119,11 +1123,8 @@ function renderCalendar(entries) {
       `;
       cell.onclick = () => {
         allowEntryView = true;
-        if (dayEntries.length === 1) {
-          showEntryView(dayEntries[0].id);
-        } else {
-          showDayEntriesPopup(dayEntries, currentYear, currentMonth, day);
-        }
+        // 1件でも複数件でも常にポップアップを表示
+        showDayEntriesPopup(dayEntries, currentYear, currentMonth, day);
       };
     } else {
       // データがない日は選択不可
