@@ -732,8 +732,11 @@ function showMonthlyView() {
   document.getElementById('btn-back-header').style.display = 'none';
   document.getElementById('btn-edit').style.display = 'block';
 
-  // 履歴/カレンダーの表示状態を保持（切り替えない）
-  // 現在の表示状態をそのまま維持
+  // 一覧に戻るときは必ず「履歴」表示に切り替え
+  document.getElementById('btn-list-view').classList.add('active');
+  document.getElementById('btn-calendar-view').classList.remove('active');
+  document.getElementById('daily-list').style.display = 'flex';
+  document.getElementById('calendar-view').style.display = 'none';
 
   updateYearDisplay();
   updateMonthButtons();
