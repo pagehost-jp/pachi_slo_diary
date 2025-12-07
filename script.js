@@ -12,6 +12,20 @@ const firebaseConfig = {
   appId: "1:1040619476876:web:be1a167e4fe777f92d28a9"
 };
 
+// ========== Gemini API モデル設定（一元管理） ==========
+// ⚠️ モデル名変更時はここだけを修正すればOK
+const GEMINI_MODELS = {
+  primary: "gemini-2.5-flash",      // 第一候補（最新・最適）
+  fallback1: "gemini-1.5-flash",    // フォールバック1
+  fallback2: "gemini-1.0-pro"       // フォールバック2（最終手段）
+};
+
+// 現在使用中のモデル（動的に変更される）
+let currentGeminiModel = GEMINI_MODELS.primary;
+
+// 失敗したモデルのリスト（429エラーなど）
+let failedModels = [];
+
 // Firebase初期化
 let firebaseApp = null;
 let auth = null;
@@ -1534,38 +1548,135 @@ function updateOcrButtonState() {
   btn.style.cursor = hasImages ? 'pointer' : 'not-allowed';
 }
 
-// ========== Gemini API直接呼び出し ==========
+// ========== Gemini API直接呼び出し（自動フォールバック対応） ==========
 async function callGeminiAPI(prompt, images = []) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
+  // 試行するモデルのリスト（失敗したモデルは除外）
+  const modelsToTry = [
+    GEMINI_MODELS.primary,
+    GEMINI_MODELS.fallback1,
+    GEMINI_MODELS.fallback2
+  ].filter(model => !failedModels.includes(model));
 
-  const parts = [{ text: prompt }];
+  if (modelsToTry.length === 0) {
+    throw new Error('すべてのモデルが使用不可です。しばらく時間をおいてから再度お試しください。');
+  }
 
-  for (const img of images) {
-    const base64Data = img.includes(',') ? img.split(',')[1] : img;
-    const mimeType = img.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
-    parts.push({
-      inline_data: {
-        mime_type: mimeType,
-        data: base64Data
+  let lastError = null;
+
+  // モデルを順番に試す
+  for (const modelName of modelsToTry) {
+    try {
+      console.log(`🔹 Gemini API呼び出し開始: ${modelName}`);
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiApiKey}`;
+
+      const parts = [{ text: prompt }];
+
+      for (const img of images) {
+        const base64Data = img.includes(',') ? img.split(',')[1] : img;
+        const mimeType = img.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
+        parts.push({
+          inline_data: {
+            mime_type: mimeType,
+            data: base64Data
+          }
+        });
       }
-    });
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts }]
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        const errorMsg = errorData.error?.message || 'Unknown error';
+        const statusCode = response.status;
+
+        // エラー詳細ログ
+        console.error(`❌ Gemini API Error - Model: ${modelName}`);
+        console.error(`   HTTPステータス: ${statusCode}`);
+        console.error(`   エラーメッセージ: ${errorMsg}`);
+        console.error(`   フルレスポンス:`, errorData);
+
+        // エラー種別判定
+        const errorType = classifyGeminiError(statusCode, errorMsg, errorData);
+        console.error(`   エラー種別: ${errorType}`);
+
+        // 429（クォータ超過）または limit:0 の場合は次のモデルへ
+        if (statusCode === 429 || errorMsg.includes('quota') || errorMsg.includes('limit')) {
+          console.warn(`⚠️ ${modelName} はクォータ超過。次のモデルを試します...`);
+          failedModels.push(modelName);
+          lastError = { type: errorType, message: errorMsg, status: statusCode };
+          continue; // 次のモデルへ
+        }
+
+        // APIキーエラーの場合は即座に失敗
+        if (statusCode === 401 || statusCode === 403 || errorMsg.includes('API key')) {
+          throw new Error('APIキーが無効です。設定画面で正しいAPIキーを入力してください。');
+        }
+
+        // その他のエラーも記録して次へ
+        lastError = { type: errorType, message: errorMsg, status: statusCode };
+        failedModels.push(modelName);
+        continue;
+      }
+
+      // 成功した場合
+      const data = await response.json();
+      currentGeminiModel = modelName; // 成功したモデルを記録
+      console.log(`✅ Gemini API成功: ${modelName}`);
+      return data.candidates[0].content.parts[0].text;
+
+    } catch (error) {
+      console.error(`❌ ${modelName} でエラー発生:`, error);
+      lastError = { type: 'NETWORK_ERROR', message: error.message, status: 0 };
+      failedModels.push(modelName);
+    }
   }
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts }]
-    })
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error?.message || 'API呼び出し失敗');
+  // すべてのモデルが失敗した場合
+  if (lastError) {
+    throw new Error(formatGeminiError(lastError));
   }
+  throw new Error('Gemini APIの呼び出しに失敗しました。');
+}
 
-  const data = await response.json();
-  return data.candidates[0].content.parts[0].text;
+// エラー種別を判定
+function classifyGeminiError(statusCode, message, errorData) {
+  if (statusCode === 401 || statusCode === 403 || message.includes('API key')) {
+    return 'API_KEY_ERROR';
+  }
+  if (statusCode === 429 || message.includes('quota') || message.includes('limit')) {
+    return 'QUOTA_EXCEEDED';
+  }
+  if (message.includes('not found') || message.includes('invalid model')) {
+    return 'MODEL_INVALID';
+  }
+  if (statusCode >= 500) {
+    return 'SERVER_ERROR';
+  }
+  return 'UNKNOWN_ERROR';
+}
+
+// エラーメッセージをユーザー向けに整形
+function formatGeminiError(error) {
+  switch (error.type) {
+    case 'API_KEY_ERROR':
+      return '❌ APIキーが無効です。設定画面で正しいAPIキーを入力してください。';
+    case 'QUOTA_EXCEEDED':
+      return '⚠️ 無料枠の制限に達しました。しばらく時間をおいてから再度お試しください。';
+    case 'MODEL_INVALID':
+      return '❌ 使用中のモデルが無効化されました。開発者に連絡してください。';
+    case 'SERVER_ERROR':
+      return '❌ Google側のサーバーエラーです。しばらく時間をおいてから再度お試しください。';
+    case 'NETWORK_ERROR':
+      return '❌ ネットワークエラーが発生しました。インターネット接続を確認してください。';
+    default:
+      return `❌ エラーが発生しました: ${error.message}`;
+  }
 }
 
 // ========== OCR機能 ==========
@@ -1632,16 +1743,20 @@ JSONのみを返してください。`;
     displayOcrResult(data);
 
   } catch (error) {
-    console.error('OCR Error:', error);
-    if (error.message.includes('API key')) {
-      alert('APIキーが無効です。正しいAPIキーを設定してください。');
-      openSettings();
-    } else {
-      // エラー時も結果エリアに表示
-      const resultDiv = document.getElementById('ocr-result');
-      const dataGrid = document.getElementById('ocr-data-grid');
-      dataGrid.innerHTML = `<div class="ocr-error">読み取りに失敗しました</div>`;
-      resultDiv.style.display = 'block';
+    console.error('❌ OCR Error:', error);
+
+    // エラーメッセージを表示エリアに表示
+    const resultDiv = document.getElementById('ocr-result');
+    const dataGrid = document.getElementById('ocr-data-grid');
+
+    // エラーメッセージを整形（既にformatGeminiErrorで整形済み）
+    const errorMessage = error.message || '読み取りに失敗しました';
+    dataGrid.innerHTML = `<div class="ocr-error">${errorMessage}</div>`;
+    resultDiv.style.display = 'block';
+
+    // APIキーエラーの場合は設定画面を開く
+    if (error.message.includes('APIキー')) {
+      setTimeout(() => openSettings(), 1500);
     }
   } finally {
     statusDiv.style.display = 'none';
