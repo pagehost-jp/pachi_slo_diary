@@ -3114,6 +3114,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-close-settings').addEventListener('click', closeSettings);
   document.getElementById('btn-save-settings').addEventListener('click', saveSettings);
   document.getElementById('btn-toggle-key').addEventListener('click', toggleKeyVisibility);
+  document.getElementById('btn-show-api-key-input').addEventListener('click', showApiKeyInput);
+  document.getElementById('btn-back-to-top-settings').addEventListener('click', () => {
+    // APIキーが設定されていない場合は警告
+    if (!geminiApiKey) {
+      alert('APIキーを入力して保存してください');
+      return;
+    }
+    // 設定画面を閉じてTOPに戻る
+    document.getElementById('settings-modal').style.display = 'none';
+    document.body.style.overflow = '';
+    showMonthlyView();
+  });
 
   // Firebase認証
   document.getElementById('btn-user').addEventListener('click', () => {
@@ -3172,10 +3184,36 @@ function openSettings() {
   document.getElementById('settings-modal').style.display = 'flex';
   // 背景のスクロールを無効化
   document.body.style.overflow = 'hidden';
+
+  // APIキーの表示状態を更新
+  updateApiKeyView();
+
   // ログイン中は使用量を更新
   if (currentUser) {
     updateFirestoreUsageDisplay();
   }
+}
+
+// APIキー表示/非表示の切り替え
+function updateApiKeyView() {
+  const savedView = document.getElementById('api-key-saved-view');
+  const inputView = document.getElementById('api-key-input-view');
+
+  if (geminiApiKey) {
+    // APIキー設定済み → 保存済み表示
+    savedView.style.display = 'block';
+    inputView.style.display = 'none';
+  } else {
+    // APIキー未設定 → 入力欄表示
+    savedView.style.display = 'none';
+    inputView.style.display = 'block';
+  }
+}
+
+// APIキー入力欄を表示
+function showApiKeyInput() {
+  document.getElementById('api-key-saved-view').style.display = 'none';
+  document.getElementById('api-key-input-view').style.display = 'block';
 }
 
 function closeSettings() {
@@ -3206,9 +3244,8 @@ async function saveSettings() {
       }
     }
     showToast('設定を保存しました');
-    document.getElementById('settings-modal').style.display = 'none';
-    // 背景のスクロールを再度有効化
-    document.body.style.overflow = '';
+    // APIキー表示を更新（保存済み表示に切り替え）
+    updateApiKeyView();
   } else {
     showToast('Gemini APIキーを入力してください', true);
   }

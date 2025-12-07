@@ -50,14 +50,27 @@
     <!-- 設定モーダル -->
     <div class="modal" id="settings-modal" style="display: none;">
       <div class="modal-content">
-        <h3>設定</h3>
+        <div class="settings-header">
+          <h3>設定</h3>
+          <button class="btn-back-to-top" id="btn-back-to-top-settings" title="TOPに戻る">🏠</button>
+        </div>
         <div class="form-group">
           <label class="form-label">Gemini APIキー</label>
-          <div class="input-with-toggle">
-            <input type="password" id="api-key-input" class="input-text" placeholder="AIza...">
-            <button type="button" class="btn-toggle-visibility" id="btn-toggle-key">表示</button>
+          <!-- APIキー設定済みの場合の表示 -->
+          <div id="api-key-saved-view" style="display: none;">
+            <div class="api-key-status">
+              <span class="api-key-saved-text">✅ APIキー設定済み</span>
+              <button type="button" class="btn btn-secondary btn-small" id="btn-show-api-key-input">表示/編集</button>
+            </div>
           </div>
-          <p class="hint">Google AI Studioで無料取得: <a href="https://aistudio.google.com/app/apikey" target="_blank">こちら</a> | <a href="help.html" target="_blank">取得方法を見る</a></p>
+          <!-- APIキー入力欄 -->
+          <div id="api-key-input-view">
+            <div class="input-with-toggle">
+              <input type="password" id="api-key-input" class="input-text" placeholder="AIza...">
+              <button type="button" class="btn-toggle-visibility" id="btn-toggle-key">表示</button>
+            </div>
+            <p class="hint">Google AI Studioで無料取得: <a href="https://aistudio.google.com/app/apikey" target="_blank">こちら</a> | <a href="help.html" target="_blank">取得方法を見る</a></p>
+          </div>
         </div>
 
         <div class="form-group">
