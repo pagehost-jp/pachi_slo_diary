@@ -207,6 +207,8 @@ body {
 
 .sync-buttons .btn {
   flex: 1;
+  padding: 8px 12px;
+  font-size: 0.85rem;
 }
 
 /* ========== Modal ========== */
@@ -2080,8 +2082,8 @@ body {
 
 .btn-backup {
   flex: 1;
-  padding: 14px 20px;
-  font-size: 15px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
   font-weight: bold;
   border-radius: 8px;
   cursor: pointer;
