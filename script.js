@@ -20,37 +20,92 @@ let storage = null; // Firebase Storage
 let currentUser = null;
 let unsubscribeSync = null; // リアルタイム同期のリスナー解除用
 
+// デバッグ用: 画面上にログ表示（スマホでも確認できる）
+function showDebugLog(message) {
+  console.log(message);
+  // デバッグモード時のみ画面表示（URLに?debug=1がある場合）
+  if (window.location.search.includes('debug=1')) {
+    const debugDiv = document.getElementById('debug-log') || (() => {
+      const div = document.createElement('div');
+      div.id = 'debug-log';
+      div.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.9);color:#0f0;padding:10px;font-size:10px;max-height:200px;overflow-y:auto;z-index:99999;';
+      document.body.appendChild(div);
+      return div;
+    })();
+    const time = new Date().toLocaleTimeString();
+    debugDiv.innerHTML = `[${time}] ${message}<br>` + debugDiv.innerHTML;
+  }
+}
+
 async function initFirebase() {
   if (firebaseConfig.apiKey === "YOUR_API_KEY") {
     console.log('Firebase未設定 - クラウド同期は無効');
     return false;
   }
   try {
+    showDebugLog('🔧 Firebase初期化開始');
+
     firebaseApp = firebase.initializeApp(firebaseConfig);
     auth = firebase.auth();
     firestoreDb = firebase.firestore();
     storage = firebase.storage(); // Storage初期化
 
-    // 認証の永続性をLOCALに設定（PWAでも維持される）
-    await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+    showDebugLog('✅ Firebase初期化完了');
+
+    // 【重要】認証の永続性を LOCAL に設定（スマホでも維持される）
+    showDebugLog('🔐 認証永続性をLOCALに設定中...');
+    try {
+      await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+      showDebugLog('✅ 認証永続性設定完了');
+    } catch (error) {
+      showDebugLog('❌ 認証永続性設定エラー: ' + error.message);
+      console.error('認証永続性設定エラー:', error);
+    }
+
+    // 【重要】認証状態の監視を先に設定（リダイレクト結果より前）
+    showDebugLog('👁️ 認証状態監視を開始');
+    auth.onAuthStateChanged(handleAuthStateChanged);
 
     // リダイレクトログインの結果を処理（スマホ対応）
+    showDebugLog('📱 リダイレクト結果を取得中...');
     try {
       const result = await auth.getRedirectResult();
-      if (result.user) {
-        console.log('リダイレクトログイン成功:', result.user.displayName);
+      showDebugLog('📱 getRedirectResult完了: ' + (result ? 'resultあり' : 'resultなし'));
+
+      // 詳細デバッグ
+      if (result) {
+        showDebugLog('🔍 result詳細: user=' + (result.user ? 'あり' : 'なし') +
+                     ', credential=' + (result.credential ? 'あり' : 'なし') +
+                     ', operationType=' + (result.operationType || 'なし'));
+        if (result.user) {
+          showDebugLog('👤 user詳細: uid=' + result.user.uid +
+                       ', email=' + (result.user.email || 'なし') +
+                       ', displayName=' + (result.user.displayName || 'なし'));
+        }
+      }
+
+      if (result && result.user) {
+        showDebugLog('✅ リダイレクトログイン成功: ' + result.user.displayName + ' (' + result.user.uid + ')');
+        // ログイン成功時は設定モーダルを閉じる
+        const settingsModal = document.getElementById('settings-modal');
+        if (settingsModal) {
+          settingsModal.style.display = 'none';
+          showDebugLog('🔒 設定モーダルを閉じました');
+        }
+      } else {
+        showDebugLog('ℹ️ リダイレクト結果なし（通常のページロード）');
       }
     } catch (error) {
-      console.error('リダイレクトログインエラー:', error);
+      showDebugLog('❌ リダイレクトログインエラー: ' + error.code + ' - ' + error.message);
+      console.error('❌ リダイレクトログインエラー:', error);
       if (error.code !== 'auth/popup-closed-by-user') {
         alert('ログインに失敗しました: ' + error.message);
       }
     }
 
-    // 認証状態の監視
-    auth.onAuthStateChanged(handleAuthStateChanged);
     return true;
   } catch (error) {
+    showDebugLog('❌ Firebase初期化エラー: ' + error.message);
     console.error('Firebase初期化エラー:', error);
     return false;
   }
@@ -58,10 +113,13 @@ async function initFirebase() {
 
 // 認証状態変更ハンドラ
 async function handleAuthStateChanged(user) {
+  const msg = user ? `ログイン中 (${user.displayName})` : 'ログアウト';
+  showDebugLog('🔄 認証状態変更: ' + msg);
   currentUser = user;
   updateUserUI();
 
   if (user) {
+    console.log('👤 ユーザー情報:', user.uid, user.email);
     // ログイン時：クラウドからAPIキーと設定を取得
     try {
       const userDoc = await firestoreDb.collection('users').doc(user.uid).get();
@@ -72,7 +130,7 @@ async function handleAuthStateChanged(user) {
           localStorage.setItem('gemini_api_key', userData.apiKey);
           const apiKeyInput = document.getElementById('api-key-input');
           if (apiKeyInput) apiKeyInput.value = userData.apiKey;
-          console.log('APIキーをクラウドから取得しました');
+          console.log('✅ APIキーをクラウドから取得しました');
         }
       } else {
         // クラウドにデータがない場合、ローカルのAPIキーをアップロード
@@ -80,11 +138,11 @@ async function handleAuthStateChanged(user) {
           await firestoreDb.collection('users').doc(user.uid).set({
             apiKey: geminiApiKey
           }, { merge: true });
-          console.log('APIキーをクラウドに保存しました');
+          console.log('✅ APIキーをクラウドに保存しました');
         }
       }
     } catch (e) {
-      console.error('ユーザー設定の取得エラー:', e);
+      console.error('❌ ユーザー設定の取得エラー:', e);
     }
     // クラウドからデータを同期してリアルタイム同期開始
     await syncFromCloud();
