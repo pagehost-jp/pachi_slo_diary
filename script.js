@@ -250,21 +250,35 @@ async function loginWithGoogle() {
   try {
     const provider = new firebase.auth.GoogleAuthProvider();
 
-    // 【重要】認証の永続性を LOCAL に設定（signInWithRedirect の直前に実行）
+    // 【重要】認証の永続性を LOCAL に設定
     showDebugLog('🔐 ログイン直前に認証永続性をLOCALに設定');
     await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
     showDebugLog('✅ 認証永続性設定完了');
 
-    // ローカル開発環境では常にリダイレクト方式を使用
-    // （ポップアップブロック回避 & スマホ対応）
-    await auth.signInWithRedirect(provider);
+    // モバイル判定（iPhone、iPad、Android）
+    const isMobile = /iphone|ipad|ipod|android/i.test(navigator.userAgent);
+
+    if (isMobile) {
+      // スマホ・タブレット → Redirect方式（画面遷移）
+      console.log('[loginWithGoogle] use redirect (mobile)');
+      showDebugLog('📱 スマホ環境: リダイレクト方式を使用');
+      await auth.signInWithRedirect(provider);
+    } else {
+      // PC・デスクトップ → Popup方式（ポップアップウィンドウ）
+      console.log('[loginWithGoogle] use popup (desktop)');
+      showDebugLog('💻 PC環境: ポップアップ方式を使用');
+      await auth.signInWithPopup(provider);
+    }
   } catch (error) {
-    console.error('ログインエラー:', error);
+    console.error('[loginWithGoogle] error:', error);
     showDebugLog('❌ ログインエラー: ' + error.code + ' - ' + error.message);
     if (error.code === 'auth/popup-closed-by-user') {
       // ユーザーがポップアップを閉じた - 何もしない
+      showDebugLog('ℹ️ ユーザーがポップアップを閉じました');
+    } else if (error.code === 'auth/popup-blocked') {
+      alert('ポップアップがブロックされました。\nブラウザの設定でポップアップを許可してください。');
     } else {
-      alert('ログインに失敗しました: ' + error.message);
+      alert('ログインに失敗しました。\n時間をおいて再度お試しください。');
     }
   }
 }
