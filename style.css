@@ -777,6 +777,16 @@ body {
   border: 1px solid var(--border);
 }
 
+.calendar-day.no-data {
+  cursor: default;
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.calendar-day.no-data:hover {
+  border-color: transparent;
+}
+
 .calendar-day.empty:hover {
   border-color: var(--border);
 }

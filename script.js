@@ -1126,11 +1126,10 @@ function renderCalendar(entries) {
         }
       };
     } else {
+      // データがない日は選択不可
+      cell.classList.add('no-data');
       cell.innerHTML = `<span class="day-number">${day}</span>`;
-      cell.onclick = () => {
-        allowEntryView = true;
-        openEntryForDate(currentYear, currentMonth, day);
-      };
+      // onclickは設定しない（選択不可）
     }
 
     if (isCurrentMonth && day === today.getDate()) {
