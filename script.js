@@ -52,16 +52,6 @@ async function initFirebase() {
 
     showDebugLog('✅ Firebase初期化完了');
 
-    // 【重要】認証の永続性を LOCAL に設定（スマホでも維持される）
-    showDebugLog('🔐 認証永続性をLOCALに設定中...');
-    try {
-      await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-      showDebugLog('✅ 認証永続性設定完了');
-    } catch (error) {
-      showDebugLog('❌ 認証永続性設定エラー: ' + error.message);
-      console.error('認証永続性設定エラー:', error);
-    }
-
     // 【重要】認証状態の監視を先に設定（リダイレクト結果より前）
     showDebugLog('👁️ 認証状態監視を開始');
     auth.onAuthStateChanged(handleAuthStateChanged);
@@ -246,11 +236,17 @@ async function loginWithGoogle() {
   try {
     const provider = new firebase.auth.GoogleAuthProvider();
 
+    // 【重要】認証の永続性を LOCAL に設定（signInWithRedirect の直前に実行）
+    showDebugLog('🔐 ログイン直前に認証永続性をLOCALに設定');
+    await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+    showDebugLog('✅ 認証永続性設定完了');
+
     // ローカル開発環境では常にリダイレクト方式を使用
     // （ポップアップブロック回避 & スマホ対応）
     await auth.signInWithRedirect(provider);
   } catch (error) {
     console.error('ログインエラー:', error);
+    showDebugLog('❌ ログインエラー: ' + error.code + ' - ' + error.message);
     if (error.code === 'auth/popup-closed-by-user') {
       // ユーザーがポップアップを閉じた - 何もしない
     } else {
