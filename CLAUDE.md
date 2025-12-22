@@ -1,63 +1,33 @@
 # プロジェクトメモ
 
-## 🚫 PWA 無効化中（開発モード）
+## 📱 PWA機能について
 
-**現在の状態**: PWA（Service Worker）は開発中のため一時的に無効化されています
+**現在の状態**: このアプリは**通常のWebアプリ**として動作します（PWA機能は削除済み）
 
-### 無効化されているもの
-- ✅ Service Worker の登録（script.js で削除処理を実行）
-- ✅ 既存のキャッシュを毎回削除
-- ✅ manifest.json の読み込み（index.html でコメントアウト）
-- ✅ Apple PWA設定（apple-mobile-web-app-capable = "no"）
-- ✅ sw.js ファイル全体をコメントアウト
+### PWA機能を削除した理由
+- ブラウザ前提のシンプルな構成にするため
+- 初心者にも分かりやすくするため
+- ホーム画面追加時も通常ブラウザで開くため
 
-### 本番前に PWA を再度有効化する方法
+### 削除されたもの
+- ✅ manifest.json（削除済み）
+- ✅ sw.js（Service Worker、削除済み）
+- ✅ index.html の PWA 関連メタタグ
+- ✅ script.js の Service Worker 処理
+- ✅ Apple PWA設定
 
-#### 1. index.html（18-27行目あたり）
-```html
-<!-- 以下のコメントアウトを解除 -->
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Maxima">
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon-192.png">
-
-<!-- 以下を削除またはコメントアウト -->
-<!-- <meta name="apple-mobile-web-app-capable" content="no"> -->
-```
-
-#### 2. script.js（2934行目あたり）
-```javascript
-// 既存の削除処理ブロック全体をコメントアウトして、
-// 代わりにコメント内に記載されている登録コードを使用:
-
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(reg => console.log('✅ Service Worker registered:', reg.scope))
-      .catch(err => console.log('❌ Service Worker registration failed:', err));
-  });
-}
-```
-
-#### 3. sw.js
-```javascript
-// ファイル全体のコメントアウトを解除（10-79行目の /* ... */ を削除）
-```
-
-#### 4. キャッシュバージョンを上げる
-```javascript
-// sw.js の CACHE_NAME を v29 以降に変更
-const CACHE_NAME = 'pachi-slo-diary-v29';
-```
+### 現在の動作
+- 通常のWebアプリとして動作
+- ブラウザのアドレスバーが常に表示される
+- ホーム画面に追加してもブラウザで開く
+- オフライン動作なし（常にオンライン必須）
 
 ---
 
 ## 重要ルール
-- **開発中は PWA 無効化のまま作業する**
-- **本番公開前に上記手順で PWA を有効化する**
-- **コード変更後は必ず `sw.js` の `CACHE_NAME` のバージョンを上げる**（例: v28 → v29）
-- プッシュも忘れずに
+- **このアプリはブラウザ前提で動作**
+- **Firestore（クラウド）にデータを保存**
+- **オフライン動作は非対応**
 
 ## 用語
 - **TOP** = 一覧画面（月別リスト表示）のこと
