@@ -66,12 +66,26 @@ async function initFirebase() {
 
     showDebugLog('✅ Firebase初期化完了');
 
+    // 【重要】起動時に認証永続性を強制設定（iOSホーム画面追加対策）
+    showDebugLog('🔐 認証永続性を強制設定中（LOCAL = indexedDB優先）...');
+    try {
+      await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+      showDebugLog('✅ 認証永続性設定完了（LOCAL）');
+      showDebugLog('📝 設定内容: indexedDB → localStorage の順で試行');
+    } catch (persistError) {
+      showDebugLog('⚠️ 永続性設定エラー: ' + persistError.message);
+      console.error('Persistence設定エラー:', persistError);
+    }
+
     // 【重要】認証状態の監視を先に設定（リダイレクト結果より前）
     showDebugLog('👁️ 認証状態監視を開始');
     auth.onAuthStateChanged(handleAuthStateChanged);
 
     // リダイレクトログインの結果を処理（スマホ対応）
-    showDebugLog('📱 リダイレクト結果を取得中...');
+    showDebugLog('📱 リダイレクト結果を取得中（getRedirectResult）...');
+    showDebugLog('🔍 現在のURL: ' + window.location.href);
+    showDebugLog('🔍 Referrer: ' + (document.referrer || 'なし'));
+
     try {
       const result = await auth.getRedirectResult();
       showDebugLog('📱 getRedirectResult完了: ' + (result ? 'resultあり' : 'resultなし'));
@@ -85,11 +99,14 @@ async function initFirebase() {
           showDebugLog('👤 user詳細: uid=' + result.user.uid +
                        ', email=' + (result.user.email || 'なし') +
                        ', displayName=' + (result.user.displayName || 'なし'));
+          showDebugLog('🔐 認証状態: emailVerified=' + result.user.emailVerified);
         }
       }
 
       if (result && result.user) {
         showDebugLog('✅ リダイレクトログイン成功: ' + result.user.displayName + ' (' + result.user.uid + ')');
+        showDebugLog('💾 認証情報が永続化されました（indexedDB/localStorage）');
+
         // ログイン成功時は設定モーダルを閉じる
         const settingsModal = document.getElementById('settings-modal');
         if (settingsModal) {
@@ -99,7 +116,7 @@ async function initFirebase() {
           showDebugLog('🔒 設定モーダルを閉じました');
         }
       } else {
-        showDebugLog('ℹ️ リダイレクト結果なし（通常のページロード）');
+        showDebugLog('ℹ️ リダイレクト結果なし（通常のページロード or 既存セッション）');
       }
     } catch (error) {
       showDebugLog('❌ リダイレクトログインエラー: ' + error.code + ' - ' + error.message);
@@ -121,11 +138,19 @@ async function initFirebase() {
 async function handleAuthStateChanged(user) {
   const msg = user ? `ログイン中 (${user.displayName})` : 'ログアウト';
   showDebugLog('🔄 認証状態変更: ' + msg);
+
+  if (user) {
+    showDebugLog('👤 ユーザー情報: uid=' + user.uid + ', email=' + (user.email || 'なし'));
+    showDebugLog('📱 起動元: ' + (window.navigator.standalone ? 'ホーム画面アイコン' : 'ブラウザ'));
+    console.log('👤 ユーザー情報:', user.uid, user.email);
+  } else {
+    showDebugLog('⚠️ 未ログイン状態');
+  }
+
   currentUser = user;
   updateUserUI();
 
   if (user) {
-    console.log('👤 ユーザー情報:', user.uid, user.email);
     // ログイン時：クラウドからAPIキーと設定を取得
     try {
       const userDoc = await firestoreDb.collection('users').doc(user.uid).get();
@@ -255,23 +280,28 @@ async function loginWithGoogle() {
   try {
     const provider = new firebase.auth.GoogleAuthProvider();
 
-    // 【重要】認証の永続性を LOCAL に設定
-    showDebugLog('🔐 ログイン直前に認証永続性をLOCALに設定');
+    // 【重要】認証の永続性を LOCAL に設定（念のため再設定）
+    showDebugLog('🔐 ログイン直前に認証永続性を再確認・設定');
     await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-    showDebugLog('✅ 認証永続性設定完了');
+    showDebugLog('✅ 認証永続性設定完了（LOCAL = indexedDB優先）');
 
     // モバイル判定（iPhone、iPad、Android）
     const isMobile = /iphone|ipad|ipod|android/i.test(navigator.userAgent);
+    const userAgent = navigator.userAgent;
+
+    showDebugLog('📱 デバイス判定: ' + (isMobile ? 'モバイル' : 'デスクトップ'));
+    showDebugLog('🔍 UserAgent: ' + userAgent.substring(0, 50) + '...');
 
     if (isMobile) {
       // スマホ・タブレット → Redirect方式（画面遷移）
       console.log('[loginWithGoogle] use redirect (mobile)');
-      showDebugLog('📱 スマホ環境: リダイレクト方式を使用');
+      showDebugLog('📱 スマホ環境: signInWithRedirect を使用');
+      showDebugLog('🔄 リダイレクト開始...');
       await auth.signInWithRedirect(provider);
     } else {
       // PC・デスクトップ → Popup方式（ポップアップウィンドウ）
       console.log('[loginWithGoogle] use popup (desktop)');
-      showDebugLog('💻 PC環境: ポップアップ方式を使用');
+      showDebugLog('💻 PC環境: signInWithPopup を使用');
       await auth.signInWithPopup(provider);
     }
   } catch (error) {
